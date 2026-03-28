@@ -150,7 +150,8 @@ async def handle_history(request: web.Request) -> web.Response:
         try:
             since_ts = float(since_str)
         except ValueError as exc:
-            raise web.HTTPBadRequest(reason=f"Invalid 'since' value: {since_str!r}") from exc
+            raise web.HTTPBadRequest(
+                reason=f"Invalid 'since' value: {since_str!r}") from exc
         messages = store.since(topic, since_ts)
     else:
         try:

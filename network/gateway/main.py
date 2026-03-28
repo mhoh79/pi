@@ -13,6 +13,9 @@ LOG_LEVEL         Logging verbosity   (default: ``INFO``)
 """
 
 from __future__ import annotations
+from api import register_routes, broadcast
+from store import TimeSeriesStore
+from aiohttp import web
 
 import asyncio
 import logging
@@ -26,10 +29,6 @@ import sys
 # ---------------------------------------------------------------------------
 sys.path.insert(0, "/opt/shared")
 
-from aiohttp import web
-
-from store import TimeSeriesStore
-from api import register_routes, broadcast
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -119,7 +118,8 @@ async def main() -> None:
     await runner.setup()
     site = web.TCPSite(runner, GATEWAY_HOST, GATEWAY_PORT)
     await site.start()
-    logger.info("Gateway listening on http://%s:%d", GATEWAY_HOST, GATEWAY_PORT)
+    logger.info("Gateway listening on http://%s:%d",
+                GATEWAY_HOST, GATEWAY_PORT)
 
     shutdown_event = asyncio.Event()
 

@@ -122,7 +122,8 @@ class HttpTransport(Transport):
             try:
                 async with self._session.get(f"{self._base_url}/health") as resp:
                     if resp.status == 200:
-                        logger.info("HttpTransport connected to %s", self._base_url)
+                        logger.info(
+                            "HttpTransport connected to %s", self._base_url)
                         return
             except aiohttp.ClientError:
                 pass
@@ -153,7 +154,8 @@ class HttpTransport(Transport):
     async def publish(self, topic: str, payload: Dict[str, Any]) -> None:
         """POST *payload* to ``/api/ingest`` tagged with *topic*."""
         if self._session is None:
-            raise RuntimeError("Transport not connected – call connect() first")
+            raise RuntimeError(
+                "Transport not connected – call connect() first")
 
         body = {**payload, "topic": topic}  # topic always wins over payload
         url = f"{self._base_url}/api/ingest"
@@ -183,7 +185,8 @@ class HttpTransport(Transport):
         """
         self._subscriptions.setdefault(topic, []).append(callback)
         # Only one polling task per topic
-        existing = [t for t in self._poll_tasks if not t.done() and t.get_name() == topic]
+        existing = [t for t in self._poll_tasks if not t.done()
+                    and t.get_name() == topic]
         if not existing:
             task = asyncio.create_task(self._poll_loop(topic), name=topic)
             self._poll_tasks.append(task)
@@ -209,11 +212,13 @@ class HttpTransport(Transport):
                                 try:
                                     cb(topic, data)
                                 except Exception as exc:  # noqa: BLE001
-                                    logger.error("Subscriber callback error: %s", exc)
+                                    logger.error(
+                                        "Subscriber callback error: %s", exc)
                     elif resp.status == 404:
                         pass  # topic not yet populated – normal at startup
                     else:
-                        logger.warning("Poll %s returned HTTP %d", url, resp.status)
+                        logger.warning(
+                            "Poll %s returned HTTP %d", url, resp.status)
             except asyncio.CancelledError:
                 break
             except aiohttp.ClientError as exc:
@@ -233,7 +238,8 @@ class HttpTransport(Transport):
         Returns the parsed JSON body, or ``{}`` on error.
         """
         if self._session is None:
-            raise RuntimeError("Transport not connected – call connect() first")
+            raise RuntimeError(
+                "Transport not connected – call connect() first")
 
         url = f"{self._base_url}{path}"
         method = method.upper()
@@ -340,7 +346,8 @@ class DdsTransport(Transport):
         from models import AlarmEvent, ControlOutput, SensorReading
 
         # Determine DDS topic from payload content
-        inner = payload.get("payload", payload) if isinstance(payload, dict) else payload
+        inner = payload.get("payload", payload) if isinstance(
+            payload, dict) else payload
         if isinstance(inner, dict) and "alarm_id" in inner:
             dds_topic_name = TOPIC_ALARM_DATA
             model = AlarmEvent.from_legacy_dict(payload)
@@ -357,7 +364,8 @@ class DdsTransport(Transport):
             return
 
         if dds_topic_name not in self._writers:
-            self._writers[dds_topic_name] = DataWriter(self._participant, dds_topic)
+            self._writers[dds_topic_name] = DataWriter(
+                self._participant, dds_topic)
 
         writer = self._writers[dds_topic_name]
         sample = model.to_dds()
@@ -386,7 +394,8 @@ class DdsTransport(Transport):
 
         dds_topic = self._topics.get(topic)
         if dds_topic is None:
-            logger.error("Cannot subscribe: DDS topic %r not registered", topic)
+            logger.error(
+                "Cannot subscribe: DDS topic %r not registered", topic)
             return
 
         reader = DataReader(self._participant, dds_topic)
@@ -409,10 +418,12 @@ class DdsTransport(Transport):
                         data = model.to_dict()
                         app_topic = data.get("topic", topic)
                         if self._loop is not None and self._loop.is_running():
-                            self._loop.call_soon_threadsafe(callback, app_topic, data)
+                            self._loop.call_soon_threadsafe(
+                                callback, app_topic, data)
                 except Exception as exc:  # noqa: BLE001
                     if not self._stop_event.is_set():
-                        logger.warning("DDS reader error on %s: %s", topic, exc)
+                        logger.warning(
+                            "DDS reader error on %s: %s", topic, exc)
 
         thread = threading.Thread(
             target=_reader_loop, daemon=True, name=f"dds-reader-{topic}",
@@ -563,8 +574,10 @@ def create_transport(transport_type: Optional[str] = None) -> Transport:
         host = os.environ.get("GATEWAY_HOST", "gateway")
         port = os.environ.get("GATEWAY_PORT", "8080")
         base_url = f"http://{host}:{port}"
-        poll_interval = float(os.environ.get("SENSOR_INTERVAL_MS", "1000")) / 1000.0
-        logger.info("Creating HttpTransport → %s (poll %.1fs)", base_url, poll_interval)
+        poll_interval = float(os.environ.get(
+            "SENSOR_INTERVAL_MS", "1000")) / 1000.0
+        logger.info("Creating HttpTransport → %s (poll %.1fs)",
+                    base_url, poll_interval)
         return HttpTransport(base_url=base_url, poll_interval=poll_interval)
 
     if transport_type == "dds":

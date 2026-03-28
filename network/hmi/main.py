@@ -14,6 +14,9 @@ TRANSPORT   Transport back-end: ``http`` or ``dds`` (default: from .env)
 """
 
 from __future__ import annotations
+from api import register_routes
+from aiohttp import web, ClientSession
+import aiohttp_cors
 
 import asyncio
 import logging
@@ -25,10 +28,6 @@ from typing import Any, Dict
 
 sys.path.insert(0, "/opt/shared")
 
-import aiohttp_cors
-from aiohttp import web, ClientSession
-
-from api import register_routes
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -99,7 +98,8 @@ def build_app() -> web.Application:
 
     # Static file serving – index.html served at "/"
     if STATIC_DIR.is_dir():
-        app.router.add_static("/", path=str(STATIC_DIR), name="static", show_index=False)
+        app.router.add_static("/", path=str(STATIC_DIR),
+                              name="static", show_index=False)
         logger.info("Serving static files from %s", STATIC_DIR)
     else:
         logger.warning("Static directory not found: %s", STATIC_DIR)

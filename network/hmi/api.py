@@ -12,6 +12,7 @@ transparently.  Responses are streamed back to the browser.
 """
 
 from __future__ import annotations
+from aiohttp import web, ClientSession, ClientTimeout, ClientError
 
 import logging
 import os
@@ -20,11 +21,11 @@ from typing import Callable
 
 sys.path.insert(0, "/opt/shared")
 
-from aiohttp import web, ClientSession, ClientTimeout, ClientError
 
 logger = logging.getLogger("hmi.api")
 
-GATEWAY_BASE: str = os.environ.get("GATEWAY_URL", "http://gateway:8080").rstrip("/")
+GATEWAY_BASE: str = os.environ.get(
+    "GATEWAY_URL", "http://gateway:8080").rstrip("/")
 PLC_BASE: str = os.environ.get("PLC_URL", "http://plc:8081").rstrip("/")
 
 PROXY_TIMEOUT = ClientTimeout(total=10)
@@ -67,7 +68,8 @@ def _make_proxy_handler(upstream_base: str, strip_prefix: str) -> Callable:
         headers = _forward_headers(request)
         body = await request.read()
 
-        logger.debug("Proxy %s %s → %s", request.method, request.path, upstream_url)
+        logger.debug("Proxy %s %s → %s", request.method,
+                     request.path, upstream_url)
 
         try:
             async with session.request(

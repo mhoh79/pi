@@ -189,8 +189,10 @@ def read_inputs_dds(io_table: IOTable) -> dict[str, Any]:
         topic = io_table.get_input_topic(name)
         msg_data = _dds_input_cache.get(topic)
         if msg_data is not None:
-            payload = msg_data.get("payload", msg_data) if isinstance(msg_data, dict) else msg_data
-            value = payload.get("value", payload) if isinstance(payload, dict) else payload
+            payload = msg_data.get("payload", msg_data) if isinstance(
+                msg_data, dict) else msg_data
+            value = payload.get("value", payload) if isinstance(
+                payload, dict) else payload
             inputs[name] = value
     return inputs
 
@@ -394,7 +396,8 @@ async def main() -> None:
         logger.info("PLC subscribed to DDS topic '%s'", TOPIC_SENSOR_DATA)
 
     # Start scan loop as a background task
-    loop_task = asyncio.create_task(scan_loop(state, dds_transport=dds_transport))
+    loop_task = asyncio.create_task(
+        scan_loop(state, dds_transport=dds_transport))
 
     # Build and start the REST API
     app = build_app(state)
