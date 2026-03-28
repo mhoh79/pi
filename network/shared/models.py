@@ -26,9 +26,9 @@ from pydantic import BaseModel, Field
 class SensorReading(BaseModel):
     """A single scalar sensor measurement."""
 
-    topic: str = ""
-    source: str = ""
-    timestamp: float = Field(default_factory=time.time)
+    topic: str
+    source: str
+    timestamp: float
     value: float = 0.0
     unit: str = ""
     raw_key: str = ""
