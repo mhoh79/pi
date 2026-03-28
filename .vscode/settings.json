@@ -1,3 +1,3 @@
 {
-    "cmake.sourceDirectory": "/workspaces/pi/examples/c"
+    "cmake.sourceDirectory": "${workspaceFolder}/examples/c"
 }
