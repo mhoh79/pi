@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,29 +9,36 @@
     /* ------------------------------------------------------------------ */
     /* Reset & base                                                         */
     /* ------------------------------------------------------------------ */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg:        #0d1117;
-      --surface:   #161b22;
-      --border:    #30363d;
-      --text:      #e6edf3;
-      --text-muted:#7d8590;
-      --accent:    #58a6ff;
-      --green:     #3fb950;
-      --yellow:    #d29922;
-      --red:       #f85149;
-      --orange:    #f0883e;
-      --radius:    8px;
-      --gap:       16px;
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
-    html, body {
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #7d8590;
+      --accent: #58a6ff;
+      --green: #3fb950;
+      --yellow: #d29922;
+      --red: #f85149;
+      --orange: #f0883e;
+      --radius: 8px;
+      --gap: 16px;
+    }
+
+    html,
+    body {
       height: 100%;
       background: var(--bg);
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-                   "Helvetica Neue", Arial, sans-serif;
+        "Helvetica Neue", Arial, sans-serif;
       font-size: 14px;
       line-height: 1.5;
     }
@@ -66,12 +74,16 @@
     }
 
     #refresh-dot {
-      width: 8px; height: 8px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
       background: var(--green);
       transition: opacity .2s;
     }
-    #refresh-dot.blink { opacity: 0; }
+
+    #refresh-dot.blink {
+      opacity: 0;
+    }
 
     main {
       display: grid;
@@ -83,7 +95,9 @@
     }
 
     /* wide panels */
-    .full-width { grid-column: 1 / -1; }
+    .full-width {
+      grid-column: 1 / -1;
+    }
 
     /* ------------------------------------------------------------------ */
     /* Cards                                                                */
@@ -101,7 +115,7 @@
       justify-content: space-between;
       padding: 10px 14px;
       border-bottom: 1px solid var(--border);
-      background: rgba(255,255,255,.03);
+      background: rgba(255, 255, 255, .03);
     }
 
     .card-title {
@@ -112,7 +126,9 @@
       color: var(--text-muted);
     }
 
-    .card-body { padding: 14px; }
+    .card-body {
+      padding: 14px;
+    }
 
     /* ------------------------------------------------------------------ */
     /* Sensor table                                                          */
@@ -167,9 +183,14 @@
       padding: 8px 0;
       border-bottom: 1px solid var(--border);
     }
-    .output-row:last-child { border-bottom: none; }
 
-    .output-name { color: var(--text-muted); }
+    .output-row:last-child {
+      border-bottom: none;
+    }
+
+    .output-name {
+      color: var(--text-muted);
+    }
 
     .output-val {
       font-weight: 600;
@@ -184,6 +205,7 @@
       overflow: hidden;
       margin-left: 10px;
     }
+
     .bar-fill {
       height: 100%;
       background: var(--accent);
@@ -194,7 +216,11 @@
     /* ------------------------------------------------------------------ */
     /* Node health                                                           */
     /* ------------------------------------------------------------------ */
-    .node-list { display: flex; flex-direction: column; gap: 8px; }
+    .node-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
 
     .node-row {
       display: flex;
@@ -206,7 +232,9 @@
       border-radius: 6px;
     }
 
-    .node-name { font-weight: 500; }
+    .node-name {
+      font-weight: 500;
+    }
 
     .badge {
       font-size: 11px;
@@ -216,29 +244,56 @@
       text-transform: uppercase;
       letter-spacing: .04em;
     }
-    .badge-online  { background: rgba(63,185,80,.15); color: var(--green); }
-    .badge-offline { background: rgba(248,81,73,.15);  color: var(--red);   }
-    .badge-unknown { background: rgba(125,133,144,.15);color: var(--text-muted); }
+
+    .badge-online {
+      background: rgba(63, 185, 80, .15);
+      color: var(--green);
+    }
+
+    .badge-offline {
+      background: rgba(248, 81, 73, .15);
+      color: var(--red);
+    }
+
+    .badge-unknown {
+      background: rgba(125, 133, 144, .15);
+      color: var(--text-muted);
+    }
 
     /* ------------------------------------------------------------------ */
     /* Alarms                                                               */
     /* ------------------------------------------------------------------ */
-    #alarm-empty { color: var(--text-muted); font-style: italic; font-size: 13px; }
+    #alarm-empty {
+      color: var(--text-muted);
+      font-style: italic;
+      font-size: 13px;
+    }
 
     .alarm-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 8px 10px;
-      background: rgba(248,81,73,.08);
-      border: 1px solid rgba(248,81,73,.3);
+      background: rgba(248, 81, 73, .08);
+      border: 1px solid rgba(248, 81, 73, .3);
       border-radius: 6px;
       margin-bottom: 6px;
     }
-    .alarm-item:last-child { margin-bottom: 0; }
 
-    .alarm-name { font-weight: 600; color: var(--red); }
-    .alarm-ts   { font-size: 11px; color: var(--text-muted); margin-left: 8px; }
+    .alarm-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .alarm-name {
+      font-weight: 600;
+      color: var(--red);
+    }
+
+    .alarm-ts {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: 8px;
+    }
 
     .ack-btn {
       background: none;
@@ -250,7 +305,11 @@
       font-size: 12px;
       transition: border-color .15s, color .15s;
     }
-    .ack-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .ack-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
 
     /* ------------------------------------------------------------------ */
     /* Trend chart                                                           */
@@ -278,7 +337,8 @@
     }
 
     .legend-dot {
-      width: 10px; height: 10px;
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
       flex-shrink: 0;
     }
@@ -293,620 +353,679 @@
       padding: 10px 14px;
     }
 
-    .stat-item { display: flex; flex-direction: column; }
-    .stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; }
-    .stat-value { font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .stat-value {
+      font-size: 1rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
   </style>
 </head>
+
 <body>
 
-<header>
-  <h1>&#9654; RPi-Net HMI</h1>
-  <div id="refresh-indicator">
-    <div id="refresh-dot"></div>
-    <span id="last-updated">Connecting…</span>
-  </div>
-</header>
-
-<main>
-
-  <!-- Sensor Readings -->
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">Live Sensor Readings</span>
+  <header>
+    <h1>&#9654; RPi-Net HMI</h1>
+    <div id="refresh-indicator">
+      <div id="refresh-dot"></div>
+      <span id="last-updated">Connecting…</span>
     </div>
-    <div class="card-body">
-      <div class="sensor-grid" id="sensor-grid">
-        <!-- populated by JS -->
-        <div class="sensor-tile">
-          <div class="sensor-label">temp_room1</div>
-          <div class="sensor-value" id="sv-temp_room1">—<span class="sensor-unit">°C</span></div>
-          <div class="sensor-ts" id="st-temp_room1"></div>
+  </header>
+
+  <main>
+
+    <!-- Sensor Readings -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Live Sensor Readings</span>
+      </div>
+      <div class="card-body">
+        <div class="sensor-grid" id="sensor-grid">
+          <!-- populated by JS -->
+          <div class="sensor-tile">
+            <div class="sensor-label">temp_room1</div>
+            <div class="sensor-value" id="sv-temp_room1">—<span class="sensor-unit">°C</span></div>
+            <div class="sensor-ts" id="st-temp_room1"></div>
+          </div>
+          <div class="sensor-tile">
+            <div class="sensor-label">light_room1</div>
+            <div class="sensor-value" id="sv-light_room1">—<span class="sensor-unit">lx</span></div>
+            <div class="sensor-ts" id="st-light_room1"></div>
+          </div>
+          <div class="sensor-tile">
+            <div class="sensor-label">ds18b20_temp</div>
+            <div class="sensor-value" id="sv-ds18b20_temp">—<span class="sensor-unit">°C</span></div>
+            <div class="sensor-ts" id="st-ds18b20_temp"></div>
+          </div>
+          <div class="sensor-tile">
+            <div class="sensor-label">sht31_temp</div>
+            <div class="sensor-value" id="sv-sht31_temp">—<span class="sensor-unit">°C</span></div>
+            <div class="sensor-ts" id="st-sht31_temp"></div>
+          </div>
+          <div class="sensor-tile">
+            <div class="sensor-label">sht31_humidity</div>
+            <div class="sensor-value" id="sv-sht31_humidity">—<span class="sensor-unit">%</span></div>
+            <div class="sensor-ts" id="st-sht31_humidity"></div>
+          </div>
+          <div class="sensor-tile">
+            <div class="sensor-label">gas_room1</div>
+            <div class="sensor-value" id="sv-gas_room1">—<span class="sensor-unit">ppm</span></div>
+            <div class="sensor-ts" id="st-gas_room1"></div>
+          </div>
+          <div class="sensor-tile">
+            <div class="sensor-label">distance_1</div>
+            <div class="sensor-value" id="sv-distance_1">—<span class="sensor-unit">cm</span></div>
+            <div class="sensor-ts" id="st-distance_1"></div>
+          </div>
+          <div class="sensor-tile">
+            <div class="sensor-label">current_1</div>
+            <div class="sensor-value" id="sv-current_1">—<span class="sensor-unit">mA</span></div>
+            <div class="sensor-ts" id="st-current_1"></div>
+          </div>
+          <div class="sensor-tile">
+            <div class="sensor-label">power_1</div>
+            <div class="sensor-value" id="sv-power_1">—<span class="sensor-unit">mW</span></div>
+            <div class="sensor-ts" id="st-power_1"></div>
+          </div>
         </div>
-        <div class="sensor-tile">
-          <div class="sensor-label">light_room1</div>
-          <div class="sensor-value" id="sv-light_room1">—<span class="sensor-unit">lx</span></div>
-          <div class="sensor-ts" id="st-light_room1"></div>
+      </div>
+    </div>
+
+    <!-- PLC Status -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">PLC Status</span>
+        <span class="badge" id="plc-running-badge">…</span>
+      </div>
+      <div id="plc-status-bar">
+        <div class="stat-item">
+          <span class="stat-label">Cycles</span>
+          <span class="stat-value" id="plc-cycles">—</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Scan (ms)</span>
+          <span class="stat-value" id="plc-scan-ms">—</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Uptime</span>
+          <span class="stat-value" id="plc-uptime">—</span>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- PLC Status -->
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">PLC Status</span>
-      <span class="badge" id="plc-running-badge">…</span>
-    </div>
-    <div id="plc-status-bar">
-      <div class="stat-item">
-        <span class="stat-label">Cycles</span>
-        <span class="stat-value" id="plc-cycles">—</span>
+    <!-- PLC Outputs -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">PLC Outputs</span>
       </div>
-      <div class="stat-item">
-        <span class="stat-label">Scan (ms)</span>
-        <span class="stat-value" id="plc-scan-ms">—</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Uptime</span>
-        <span class="stat-value" id="plc-uptime">—</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- PLC Outputs -->
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">PLC Outputs</span>
-    </div>
-    <div class="card-body" id="outputs-body">
-      <!-- populated by JS -->
-    </div>
-  </div>
-
-  <!-- Node Health -->
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">Node Health</span>
-    </div>
-    <div class="card-body">
-      <div class="node-list" id="node-list">
+      <div class="card-body" id="outputs-body">
         <!-- populated by JS -->
       </div>
     </div>
-  </div>
 
-  <!-- Alarms -->
-  <div class="card full-width">
-    <div class="card-header">
-      <span class="card-title">Alarms</span>
-      <span id="alarm-count" style="font-size:12px;color:var(--text-muted)"></span>
+    <!-- Node Health -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Node Health</span>
+      </div>
+      <div class="card-body">
+        <div class="node-list" id="node-list">
+          <!-- populated by JS -->
+        </div>
+      </div>
     </div>
-    <div class="card-body" id="alarms-body">
-      <div id="alarm-empty">No active alarms</div>
+
+    <!-- Alarms -->
+    <div class="card full-width">
+      <div class="card-header">
+        <span class="card-title">Alarms</span>
+        <span id="alarm-count" style="font-size:12px;color:var(--text-muted)"></span>
+      </div>
+      <div class="card-body" id="alarms-body">
+        <div id="alarm-empty">No active alarms</div>
+      </div>
     </div>
-  </div>
 
-  <!-- Trend Chart -->
-  <div class="card full-width">
-    <div class="card-header">
-      <span class="card-title">Trend — last 5 minutes</span>
+    <!-- Trend Chart -->
+    <div class="card full-width">
+      <div class="card-header">
+        <span class="card-title">Trend — last 5 minutes</span>
+      </div>
+      <div class="card-body">
+        <canvas id="trend-canvas"></canvas>
+        <div class="chart-legend" id="chart-legend"></div>
+      </div>
     </div>
-    <div class="card-body">
-      <canvas id="trend-canvas"></canvas>
-      <div class="chart-legend" id="chart-legend"></div>
-    </div>
-  </div>
 
-</main>
+  </main>
 
-<script>
-"use strict";
-/* =========================================================================
-   Configuration
-   ========================================================================= */
-const REFRESH_MS      = 2000;
-const TREND_WINDOW_MS = 5 * 60 * 1000;   // 5 minutes
-const TREND_MAX_PTS   = 150;              // ~5 min at 2 s interval
+  <script>
+    "use strict";
+    /* =========================================================================
+       Configuration
+       ========================================================================= */
+    const REFRESH_MS = 2000;
+    const TREND_WINDOW_MS = 5 * 60 * 1000;   // 5 minutes
+    const TREND_MAX_PTS = 150;              // ~5 min at 2 s interval
 
-/* Sensor definitions: { key, unit, color } */
-const SENSORS = [
-  { key: "temp_room1",  unit: "°C", color: "#58a6ff", topicSuffix: "rpi-net/sensor/sensor-1/tmp102_temperature_c" },
-  { key: "light_room1", unit: "lx", color: "#3fb950", topicSuffix: "rpi-net/sensor/sensor-2/illuminance_lux" },
-];
+    /* Sensor definitions: { key, unit, color } */
+    const SENSORS = [
+      { key: "temp_room1", unit: "°C", color: "#58a6ff", topicSuffix: "rpi-net/sensor/sensor-1/tmp102_temperature_c" },
+      { key: "light_room1", unit: "lx", color: "#3fb950", topicSuffix: "rpi-net/sensor/sensor-2/illuminance_lux" },
+      { key: "ds18b20_temp", unit: "°C", color: "#f0883e", topicSuffix: "rpi-net/sensor/sensor-1/ds18b20_temperature_c" },
+      { key: "sht31_temp", unit: "°C", color: "#d2a8ff", topicSuffix: "rpi-net/sensor/sensor-1/sht31_temperature_c" },
+      { key: "sht31_humidity", unit: "%", color: "#79c0ff", topicSuffix: "rpi-net/sensor/sensor-1/sht31_humidity_pct" },
+      { key: "gas_room1", unit: "ppm", color: "#f85149", topicSuffix: "rpi-net/sensor/sensor-2/mq2_gas_ppm" },
+      { key: "distance_1", unit: "cm", color: "#56d364", topicSuffix: "rpi-net/sensor/sensor-3/hc_sr04_distance_cm" },
+      { key: "current_1", unit: "mA", color: "#ffa657", topicSuffix: "rpi-net/sensor/sensor-3/ina219_current_ma" },
+      { key: "power_1", unit: "mW", color: "#e3b341", topicSuffix: "rpi-net/sensor/sensor-3/ina219_power_mw" },
+    ];
 
-/* Nodes to monitor */
-const NODES = [
-  { id: "gateway",   label: "Gateway",    url: "/api/gateway/status" },
-  { id: "plc",       label: "PLC",        url: "/api/plc/status"    },
-  { id: "sensor-1",  label: "Sensor 1",   url: null                  },
-  { id: "sensor-2",  label: "Sensor 2",   url: null                  },
-];
+    /* Nodes to monitor */
+    const NODES = [
+      { id: "gateway", label: "Gateway", url: "/api/gateway/status" },
+      { id: "plc", label: "PLC", url: "/api/plc/status" },
+      { id: "sensor-1", label: "Sensor 1", url: null },
+      { id: "sensor-2", label: "Sensor 2", url: null },
+      { id: "sensor-3", label: "Sensor 3", url: null },
+    ];
 
-/* =========================================================================
-   State
-   ========================================================================= */
-const trendData = {};   // { sensorKey: [{ts, value}] }
-SENSORS.forEach(s => { trendData[s.key] = []; });
+    /* =========================================================================
+       State
+       ========================================================================= */
+    const trendData = {};   // { sensorKey: [{ts, value}] }
+    SENSORS.forEach(s => { trendData[s.key] = []; });
 
-const acknowledgedAlarms = new Set();
+    const acknowledgedAlarms = new Set();
 
-/* =========================================================================
-   Fetch helpers
-   ========================================================================= */
-async function fetchJSON(url) {
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  return resp.json();
-}
-
-/* =========================================================================
-   Update helpers
-   ========================================================================= */
-function fmtTs(rawTs) {
-  if (rawTs == null || rawTs === "") return "";
-  try {
-    let d;
-    if (typeof rawTs === "number") {
-      // Unix epoch seconds; Date expects milliseconds
-      d = new Date(rawTs < 1e12 ? rawTs * 1000 : rawTs);
-    } else {
-      d = new Date(rawTs);
+    /* =========================================================================
+       Fetch helpers
+       ========================================================================= */
+    async function fetchJSON(url) {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      return resp.json();
     }
-    if (Number.isNaN(d.getTime())) return "";
-    return d.toLocaleTimeString();
-  } catch { return ""; }
-}
 
-function fmtUptime(s) {
-  if (s == null) return "—";
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = Math.floor(s % 60);
-  return h > 0
-    ? `${h}h ${String(m).padStart(2,"0")}m`
-    : `${m}m ${String(sec).padStart(2,"0")}s`;
-}
-
-/* ---- Sensors ------------------------------------------------------------- */
-function updateSensors(latest) {
-  // latest is expected as { topic: {value, ts} | value }
-  const now = Date.now();
-  SENSORS.forEach(s => {
-    // try to find a matching entry by topic
-    let rawVal = null, rawTs = null;
-    for (const [topic, entry] of Object.entries(latest)) {
-      if (topic === s.topicSuffix || topic.endsWith(s.topicSuffix)) {
-        if (typeof entry === "object" && entry !== null) {
-          rawVal = entry.value ?? entry;
-          rawTs  = entry.ts ?? entry.timestamp ?? null;
+    /* =========================================================================
+       Update helpers
+       ========================================================================= */
+    function fmtTs(rawTs) {
+      if (rawTs == null || rawTs === "") return "";
+      try {
+        let d;
+        if (typeof rawTs === "number") {
+          // Unix epoch seconds; Date expects milliseconds
+          d = new Date(rawTs < 1e12 ? rawTs * 1000 : rawTs);
         } else {
-          rawVal = entry;
+          d = new Date(rawTs);
         }
-        break;
-      }
+        if (Number.isNaN(d.getTime())) return "";
+        return d.toLocaleTimeString();
+      } catch { return ""; }
     }
 
-    const el   = document.getElementById(`sv-${s.key}`);
-    const tsEl = document.getElementById(`st-${s.key}`);
-    if (el) {
-      if (rawVal != null) {
-        const num = parseFloat(rawVal);
-        // Use textContent to avoid XSS from untrusted payloads
-        let unitSpan = el.querySelector(".sensor-unit");
-        if (!unitSpan) {
-          el.textContent = "";
-          unitSpan = document.createElement("span");
-          unitSpan.className = "sensor-unit";
-          el.appendChild(unitSpan);
+    function fmtUptime(s) {
+      if (s == null) return "—";
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const sec = Math.floor(s % 60);
+      return h > 0
+        ? `${h}h ${String(m).padStart(2, "0")}m`
+        : `${m}m ${String(sec).padStart(2, "0")}s`;
+    }
+
+    /* ---- Sensors ------------------------------------------------------------- */
+    function updateSensors(latest) {
+      // latest is expected as { topic: {value, ts} | value }
+      const now = Date.now();
+      SENSORS.forEach(s => {
+        // try to find a matching entry by topic
+        let rawVal = null, rawTs = null;
+        for (const [topic, entry] of Object.entries(latest)) {
+          if (topic === s.topicSuffix || topic.endsWith(s.topicSuffix)) {
+            if (typeof entry === "object" && entry !== null) {
+              rawVal = entry.value ?? entry;
+              rawTs = entry.ts ?? entry.timestamp ?? null;
+            } else {
+              rawVal = entry;
+            }
+            break;
+          }
         }
-        const displayVal = isNaN(num) ? String(rawVal) : num.toFixed(1);
-        el.firstChild ? (el.firstChild.textContent = displayVal)
-          : el.insertBefore(document.createTextNode(displayVal), unitSpan);
-        unitSpan.textContent = s.unit;
-      }
-    }
-    if (tsEl && rawTs) tsEl.textContent = fmtTs(rawTs);
 
-    // Store trend point
-    if (rawVal != null) {
-      const arr = trendData[s.key];
-      arr.push({ ts: now, value: parseFloat(rawVal) });
-      // Prune old data
-      const cutoff = now - TREND_WINDOW_MS;
-      while (arr.length > 0 && arr[0].ts < cutoff) arr.shift();
-      if (arr.length > TREND_MAX_PTS) arr.splice(0, arr.length - TREND_MAX_PTS);
-    }
-  });
-}
+        const el = document.getElementById(`sv-${s.key}`);
+        const tsEl = document.getElementById(`st-${s.key}`);
+        if (el) {
+          if (rawVal != null) {
+            const num = parseFloat(rawVal);
+            // Use textContent to avoid XSS from untrusted payloads
+            let unitSpan = el.querySelector(".sensor-unit");
+            if (!unitSpan) {
+              el.textContent = "";
+              unitSpan = document.createElement("span");
+              unitSpan.className = "sensor-unit";
+              el.appendChild(unitSpan);
+            }
+            const displayVal = isNaN(num) ? String(rawVal) : num.toFixed(1);
+            el.firstChild ? (el.firstChild.textContent = displayVal)
+              : el.insertBefore(document.createTextNode(displayVal), unitSpan);
+            unitSpan.textContent = s.unit;
+          }
+        }
+        if (tsEl && rawTs) tsEl.textContent = fmtTs(rawTs);
 
-/* ---- PLC status ---------------------------------------------------------- */
-function updatePlcStatus(status) {
-  const badge = document.getElementById("plc-running-badge");
-  if (status.running) {
-    badge.textContent = "Running";
-    badge.className = "badge badge-online";
-  } else {
-    badge.textContent = "Stopped";
-    badge.className = "badge badge-offline";
-  }
-  const cycEl = document.getElementById("plc-cycles");
-  if (cycEl) cycEl.textContent = (status.cycle_count ?? "—").toLocaleString();
-  const msEl = document.getElementById("plc-scan-ms");
-  if (msEl) msEl.textContent = status.scan_cycle_ms ?? "—";
-  const upEl = document.getElementById("plc-uptime");
-  if (upEl) upEl.textContent = fmtUptime(status.uptime_s);
-}
-
-/* ---- PLC outputs --------------------------------------------------------- */
-function updateOutputs(data) {
-  const outputs = data.outputs ?? data;
-  const body = document.getElementById("outputs-body");
-  if (!body) return;
-
-  body.innerHTML = "";
-  for (const [name, value] of Object.entries(outputs)) {
-    const row = document.createElement("div");
-    row.className = "output-row";
-
-    const nameEl = document.createElement("span");
-    nameEl.className = "output-name";
-    nameEl.textContent = name;
-
-    const right = document.createElement("div");
-    right.style.display = "flex";
-    right.style.alignItems = "center";
-
-    const valEl = document.createElement("span");
-    valEl.className = "output-val";
-
-    let pct = null;
-    if (typeof value === "number") {
-      // Heuristic: if value is 0-100 and name contains valve/level/pct → show bar
-      if (/valve|level|pct|percent/i.test(name) && value >= 0 && value <= 100) {
-        pct = value;
-      }
-      valEl.textContent = value.toFixed(1);
-    } else if (typeof value === "boolean") {
-      valEl.textContent = value ? "ON" : "OFF";
-      valEl.style.color = value ? "var(--red)" : "var(--green)";
-    } else {
-      valEl.textContent = String(value);
+        // Store trend point
+        if (rawVal != null) {
+          const arr = trendData[s.key];
+          arr.push({ ts: now, value: parseFloat(rawVal) });
+          // Prune old data
+          const cutoff = now - TREND_WINDOW_MS;
+          while (arr.length > 0 && arr[0].ts < cutoff) arr.shift();
+          if (arr.length > TREND_MAX_PTS) arr.splice(0, arr.length - TREND_MAX_PTS);
+        }
+      });
     }
 
-    right.appendChild(valEl);
-
-    if (pct !== null) {
-      const wrap = document.createElement("div");
-      wrap.className = "bar-wrap";
-      const fill = document.createElement("div");
-      fill.className = "bar-fill";
-      fill.style.width = `${Math.max(0, Math.min(100, pct))}%`;
-      wrap.appendChild(fill);
-      right.appendChild(wrap);
-    }
-
-    row.appendChild(nameEl);
-    row.appendChild(right);
-    body.appendChild(row);
-  }
-}
-
-/* ---- Alarms -------------------------------------------------------------- */
-function updateAlarms(alarmList) {
-  const body  = document.getElementById("alarms-body");
-  const empty = document.getElementById("alarm-empty");
-  const count = document.getElementById("alarm-count");
-  if (!body) return;
-
-  // alarmList may be array of strings or array of {name, ts} objects
-  const active = (alarmList || []).filter(a => {
-    const key = typeof a === "string" ? a : a.name;
-    return !acknowledgedAlarms.has(key);
-  });
-
-  if (count) count.textContent = active.length > 0 ? `${active.length} active` : "";
-
-  // Remove old alarm items (keep the empty placeholder)
-  [...body.querySelectorAll(".alarm-item")].forEach(el => el.remove());
-
-  if (active.length === 0) {
-    if (empty) empty.style.display = "";
-    return;
-  }
-  if (empty) empty.style.display = "none";
-
-  active.forEach(a => {
-    const name = typeof a === "string" ? a : a.name;
-    const ts   = typeof a === "object" && a.ts ? a.ts : null;
-
-    const item = document.createElement("div");
-    item.className = "alarm-item";
-
-    const left = document.createElement("div");
-    const nameEl = document.createElement("span");
-    nameEl.className = "alarm-name";
-    nameEl.textContent = name;
-    left.appendChild(nameEl);
-    if (ts) {
-      const tsEl = document.createElement("span");
-      tsEl.className = "alarm-ts";
-      tsEl.textContent = fmtTs(ts);
-      left.appendChild(tsEl);
-    }
-
-    const ackBtn = document.createElement("button");
-    ackBtn.className = "ack-btn";
-    ackBtn.textContent = "Acknowledge";
-    ackBtn.addEventListener("click", () => {
-      acknowledgedAlarms.add(name);
-      item.remove();
-      const remaining = body.querySelectorAll(".alarm-item").length;
-      if (remaining === 0 && empty) empty.style.display = "";
-      if (count) count.textContent = remaining > 0 ? `${remaining} active` : "";
-    });
-
-    item.appendChild(left);
-    item.appendChild(ackBtn);
-    body.appendChild(item);
-  });
-}
-
-/* ---- Node health --------------------------------------------------------- */
-const nodeStatus = {};
-
-async function refreshNodeHealth() {
-  const list = document.getElementById("node-list");
-  if (!list) return;
-
-  // Check gateway & plc by pinging their status endpoints
-  for (const node of NODES) {
-    if (!node.url) continue;
-    try {
-      const resp = await fetch(node.url, { signal: AbortSignal.timeout(3000) });
-      nodeStatus[node.id] = resp.ok ? "online" : "offline";
-    } catch {
-      nodeStatus[node.id] = "offline";
-    }
-  }
-
-  // Infer sensor node status from gateway's node tracking
-  try {
-    const nodes = await fetchJSON("/api/gateway/nodes");
-    const now = Date.now() / 1000;
-    for (const node of NODES) {
-      if (node.url) continue; // already checked above
-      const lastSeen = nodes[node.id];
-      if (lastSeen && (now - lastSeen) < 30) {
-        nodeStatus[node.id] = "online";
+    /* ---- PLC status ---------------------------------------------------------- */
+    function updatePlcStatus(status) {
+      const badge = document.getElementById("plc-running-badge");
+      if (status.running) {
+        badge.textContent = "Running";
+        badge.className = "badge badge-online";
       } else {
-        nodeStatus[node.id] = lastSeen ? "offline" : "unknown";
+        badge.textContent = "Stopped";
+        badge.className = "badge badge-offline";
+      }
+      const cycEl = document.getElementById("plc-cycles");
+      if (cycEl) cycEl.textContent = (status.cycle_count ?? "—").toLocaleString();
+      const msEl = document.getElementById("plc-scan-ms");
+      if (msEl) msEl.textContent = status.scan_cycle_ms ?? "—";
+      const upEl = document.getElementById("plc-uptime");
+      if (upEl) upEl.textContent = fmtUptime(status.uptime_s);
+    }
+
+    /* ---- PLC outputs --------------------------------------------------------- */
+    function updateOutputs(data) {
+      const outputs = data.outputs ?? data;
+      const body = document.getElementById("outputs-body");
+      if (!body) return;
+
+      body.innerHTML = "";
+      for (const [name, value] of Object.entries(outputs)) {
+        const row = document.createElement("div");
+        row.className = "output-row";
+
+        const nameEl = document.createElement("span");
+        nameEl.className = "output-name";
+        nameEl.textContent = name;
+
+        const right = document.createElement("div");
+        right.style.display = "flex";
+        right.style.alignItems = "center";
+
+        const valEl = document.createElement("span");
+        valEl.className = "output-val";
+
+        let pct = null;
+        if (typeof value === "number") {
+          // Heuristic: if value is 0-100 and name contains valve/level/pct → show bar
+          if (/valve|level|pct|percent/i.test(name) && value >= 0 && value <= 100) {
+            pct = value;
+          }
+          valEl.textContent = value.toFixed(1);
+        } else if (typeof value === "boolean") {
+          valEl.textContent = value ? "ON" : "OFF";
+          valEl.style.color = value ? "var(--red)" : "var(--green)";
+        } else {
+          valEl.textContent = String(value);
+        }
+
+        right.appendChild(valEl);
+
+        if (pct !== null) {
+          const wrap = document.createElement("div");
+          wrap.className = "bar-wrap";
+          const fill = document.createElement("div");
+          fill.className = "bar-fill";
+          fill.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+          wrap.appendChild(fill);
+          right.appendChild(wrap);
+        }
+
+        row.appendChild(nameEl);
+        row.appendChild(right);
+        body.appendChild(row);
       }
     }
-  } catch { /* gateway unreachable – sensor status unknown */ }
 
-  list.innerHTML = "";
-  NODES.forEach(node => {
-    const status = nodeStatus[node.id] ?? "unknown";
-    const row = document.createElement("div");
-    row.className = "node-row";
+    /* ---- Alarms -------------------------------------------------------------- */
+    function updateAlarms(alarmList) {
+      const body = document.getElementById("alarms-body");
+      const empty = document.getElementById("alarm-empty");
+      const count = document.getElementById("alarm-count");
+      if (!body) return;
 
-    const nameEl = document.createElement("span");
-    nameEl.className = "node-name";
-    nameEl.textContent = node.label;
+      // alarmList may be array of strings or array of {name, ts} objects
+      const active = (alarmList || []).filter(a => {
+        const key = typeof a === "string" ? a : a.name;
+        return !acknowledgedAlarms.has(key);
+      });
 
-    const badge = document.createElement("span");
-    badge.className = `badge badge-${status}`;
-    badge.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+      if (count) count.textContent = active.length > 0 ? `${active.length} active` : "";
 
-    row.appendChild(nameEl);
-    row.appendChild(badge);
-    list.appendChild(row);
-  });
-}
+      // Remove old alarm items (keep the empty placeholder)
+      [...body.querySelectorAll(".alarm-item")].forEach(el => el.remove());
 
-/* =========================================================================
-   Trend Chart
-   ========================================================================= */
-const canvas  = document.getElementById("trend-canvas");
-const ctx     = canvas ? canvas.getContext("2d") : null;
+      if (active.length === 0) {
+        if (empty) empty.style.display = "";
+        return;
+      }
+      if (empty) empty.style.display = "none";
 
-function drawChart() {
-  if (!ctx) return;
+      active.forEach(a => {
+        const name = typeof a === "string" ? a : a.name;
+        const ts = typeof a === "object" && a.ts ? a.ts : null;
 
-  const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.parentElement.getBoundingClientRect();
-  const W = rect.width;
-  const H = 180;
+        const item = document.createElement("div");
+        item.className = "alarm-item";
 
-  canvas.style.width  = `${W}px`;
-  canvas.style.height = `${H}px`;
-  canvas.width  = W * dpr;
-  canvas.height = H * dpr;
-  ctx.scale(dpr, dpr);
+        const left = document.createElement("div");
+        const nameEl = document.createElement("span");
+        nameEl.className = "alarm-name";
+        nameEl.textContent = name;
+        left.appendChild(nameEl);
+        if (ts) {
+          const tsEl = document.createElement("span");
+          tsEl.className = "alarm-ts";
+          tsEl.textContent = fmtTs(ts);
+          left.appendChild(tsEl);
+        }
 
-  const PAD = { top: 12, right: 16, bottom: 30, left: 42 };
-  const plotW = W - PAD.left - PAD.right;
-  const plotH = H - PAD.top  - PAD.bottom;
+        const ackBtn = document.createElement("button");
+        ackBtn.className = "ack-btn";
+        ackBtn.textContent = "Acknowledge";
+        ackBtn.addEventListener("click", () => {
+          acknowledgedAlarms.add(name);
+          item.remove();
+          const remaining = body.querySelectorAll(".alarm-item").length;
+          if (remaining === 0 && empty) empty.style.display = "";
+          if (count) count.textContent = remaining > 0 ? `${remaining} active` : "";
+        });
 
-  ctx.clearRect(0, 0, W, H);
+        item.appendChild(left);
+        item.appendChild(ackBtn);
+        body.appendChild(item);
+      });
+    }
 
-  // Background
-  ctx.fillStyle = "#0d1117";
-  ctx.fillRect(0, 0, W, H);
+    /* ---- Node health --------------------------------------------------------- */
+    const nodeStatus = {};
 
-  // Collect all data
-  const now    = Date.now();
-  const tMin   = now - TREND_WINDOW_MS;
-  const allVals = SENSORS.flatMap(s => trendData[s.key].map(p => p.value))
-                         .filter(v => !isNaN(v));
+    async function refreshNodeHealth() {
+      const list = document.getElementById("node-list");
+      if (!list) return;
 
-  if (allVals.length === 0) {
-    ctx.fillStyle = "#7d8590";
-    ctx.font = "13px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("No data yet", W / 2, H / 2);
-    return;
-  }
-
-  let vMin = Math.min(...allVals);
-  let vMax = Math.max(...allVals);
-  if (vMin === vMax) { vMin -= 1; vMax += 1; }
-  const vPad = (vMax - vMin) * 0.1;
-  vMin -= vPad; vMax += vPad;
-
-  // Grid lines
-  ctx.strokeStyle = "#21262d";
-  ctx.lineWidth = 1;
-  const gridLines = 4;
-  for (let i = 0; i <= gridLines; i++) {
-    const y = PAD.top + (plotH / gridLines) * i;
-    ctx.beginPath();
-    ctx.moveTo(PAD.left, y);
-    ctx.lineTo(PAD.left + plotW, y);
-    ctx.stroke();
-
-    const val = vMax - ((vMax - vMin) / gridLines) * i;
-    ctx.fillStyle = "#7d8590";
-    ctx.font = "10px sans-serif";
-    ctx.textAlign = "right";
-    ctx.fillText(val.toFixed(1), PAD.left - 4, y + 3.5);
-  }
-
-  // Axis
-  ctx.strokeStyle = "#30363d";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(PAD.left, PAD.top);
-  ctx.lineTo(PAD.left, PAD.top + plotH);
-  ctx.lineTo(PAD.left + plotW, PAD.top + plotH);
-  ctx.stroke();
-
-  // Time labels (every minute)
-  ctx.fillStyle = "#7d8590";
-  ctx.font = "10px sans-serif";
-  ctx.textAlign = "center";
-  for (let min = 0; min <= 5; min++) {
-    const t = tMin + (TREND_WINDOW_MS / 5) * min;
-    const x = PAD.left + ((t - tMin) / TREND_WINDOW_MS) * plotW;
-    const label = min === 5 ? "now" : `-${5 - min}m`;
-    ctx.fillText(label, x, PAD.top + plotH + 16);
-  }
-
-  // Plot each sensor series
-  SENSORS.forEach(s => {
-    const pts = trendData[s.key];
-    if (pts.length < 2) return;
-
-    ctx.beginPath();
-    ctx.strokeStyle = s.color;
-    ctx.lineWidth = 2;
-    ctx.lineJoin = "round";
-
-    pts.forEach((p, i) => {
-      const x = PAD.left + ((p.ts - tMin) / TREND_WINDOW_MS) * plotW;
-      const y = PAD.top  + (1 - (p.value - vMin) / (vMax - vMin)) * plotH;
-      if (i === 0) ctx.moveTo(x, y);
-      else          ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-  });
-
-  // Update legend
-  const legend = document.getElementById("chart-legend");
-  if (legend && legend.children.length === 0) {
-    SENSORS.forEach(s => {
-      const item = document.createElement("div");
-      item.className = "legend-item";
-      const dot = document.createElement("div");
-      dot.className = "legend-dot";
-      dot.style.background = s.color;
-      const lbl = document.createElement("span");
-      lbl.textContent = `${s.key} (${s.unit})`;
-      item.appendChild(dot);
-      item.appendChild(lbl);
-      legend.appendChild(item);
-    });
-  }
-}
-
-/* =========================================================================
-   Main refresh loop
-   ========================================================================= */
-let refreshTimer = null;
-let nodeHealthTimer = null;
-
-async function refresh() {
-  const dot = document.getElementById("refresh-dot");
-  const lu  = document.getElementById("last-updated");
-
-  try {
-    dot.classList.add("blink");
-
-    // Fetch gateway latest sensors (returns {topic: message_dict, ...})
-    let latest = {};
-    try {
-      const raw = await fetchJSON("/api/gateway/latest");
-      // Flatten: extract payload.value from each message
-      for (const [topic, msg] of Object.entries(raw)) {
-        if (msg && typeof msg === "object" && msg.payload) {
-          latest[topic] = { value: msg.payload.value, timestamp: msg.timestamp };
-        } else {
-          latest[topic] = msg;
+      // Check gateway & plc by pinging their status endpoints
+      for (const node of NODES) {
+        if (!node.url) continue;
+        try {
+          const resp = await fetch(node.url, { signal: AbortSignal.timeout(3000) });
+          nodeStatus[node.id] = resp.ok ? "online" : "offline";
+        } catch {
+          nodeStatus[node.id] = "offline";
         }
       }
-    } catch (e) {
-      console.warn("Gateway /latest:", e.message);
-      nodeStatus["gateway"] = "offline";
+
+      // Infer sensor node status from gateway's node tracking
+      try {
+        const nodes = await fetchJSON("/api/gateway/nodes");
+        const now = Date.now() / 1000;
+        for (const node of NODES) {
+          if (node.url) continue; // already checked above
+          const lastSeen = nodes[node.id];
+          if (lastSeen && (now - lastSeen) < 30) {
+            nodeStatus[node.id] = "online";
+          } else {
+            nodeStatus[node.id] = lastSeen ? "offline" : "unknown";
+          }
+        }
+      } catch { /* gateway unreachable – sensor status unknown */ }
+
+      list.innerHTML = "";
+      NODES.forEach(node => {
+        const status = nodeStatus[node.id] ?? "unknown";
+        const row = document.createElement("div");
+        row.className = "node-row";
+
+        const nameEl = document.createElement("span");
+        nameEl.className = "node-name";
+        nameEl.textContent = node.label;
+
+        const badge = document.createElement("span");
+        badge.className = `badge badge-${status}`;
+        badge.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+
+        row.appendChild(nameEl);
+        row.appendChild(badge);
+        list.appendChild(row);
+      });
     }
-    updateSensors(latest);
 
-    // Fetch PLC status
-    try {
-      const plcStatus = await fetchJSON("/api/plc/status");
-      updatePlcStatus(plcStatus);
-      // Alarms may come from PLC status
-      if (plcStatus.alarms) updateAlarms(plcStatus.alarms);
-    } catch (e) {
-      console.warn("PLC /status:", e.message);
-      nodeStatus["plc"] = "offline";
+    /* =========================================================================
+       Trend Chart
+       ========================================================================= */
+    const canvas = document.getElementById("trend-canvas");
+    const ctx = canvas ? canvas.getContext("2d") : null;
+
+    function drawChart() {
+      if (!ctx) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const W = rect.width;
+      const H = 180;
+
+      canvas.style.width = `${W}px`;
+      canvas.style.height = `${H}px`;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      ctx.scale(dpr, dpr);
+
+      const PAD = { top: 12, right: 16, bottom: 30, left: 42 };
+      const plotW = W - PAD.left - PAD.right;
+      const plotH = H - PAD.top - PAD.bottom;
+
+      ctx.clearRect(0, 0, W, H);
+
+      // Background
+      ctx.fillStyle = "#0d1117";
+      ctx.fillRect(0, 0, W, H);
+
+      // Collect all data
+      const now = Date.now();
+      const tMin = now - TREND_WINDOW_MS;
+      const allVals = SENSORS.flatMap(s => trendData[s.key].map(p => p.value))
+        .filter(v => !isNaN(v));
+
+      if (allVals.length === 0) {
+        ctx.fillStyle = "#7d8590";
+        ctx.font = "13px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("No data yet", W / 2, H / 2);
+        return;
+      }
+
+      let vMin = Math.min(...allVals);
+      let vMax = Math.max(...allVals);
+      if (vMin === vMax) { vMin -= 1; vMax += 1; }
+      const vPad = (vMax - vMin) * 0.1;
+      vMin -= vPad; vMax += vPad;
+
+      // Grid lines
+      ctx.strokeStyle = "#21262d";
+      ctx.lineWidth = 1;
+      const gridLines = 4;
+      for (let i = 0; i <= gridLines; i++) {
+        const y = PAD.top + (plotH / gridLines) * i;
+        ctx.beginPath();
+        ctx.moveTo(PAD.left, y);
+        ctx.lineTo(PAD.left + plotW, y);
+        ctx.stroke();
+
+        const val = vMax - ((vMax - vMin) / gridLines) * i;
+        ctx.fillStyle = "#7d8590";
+        ctx.font = "10px sans-serif";
+        ctx.textAlign = "right";
+        ctx.fillText(val.toFixed(1), PAD.left - 4, y + 3.5);
+      }
+
+      // Axis
+      ctx.strokeStyle = "#30363d";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(PAD.left, PAD.top);
+      ctx.lineTo(PAD.left, PAD.top + plotH);
+      ctx.lineTo(PAD.left + plotW, PAD.top + plotH);
+      ctx.stroke();
+
+      // Time labels (every minute)
+      ctx.fillStyle = "#7d8590";
+      ctx.font = "10px sans-serif";
+      ctx.textAlign = "center";
+      for (let min = 0; min <= 5; min++) {
+        const t = tMin + (TREND_WINDOW_MS / 5) * min;
+        const x = PAD.left + ((t - tMin) / TREND_WINDOW_MS) * plotW;
+        const label = min === 5 ? "now" : `-${5 - min}m`;
+        ctx.fillText(label, x, PAD.top + plotH + 16);
+      }
+
+      // Plot each sensor series
+      SENSORS.forEach(s => {
+        const pts = trendData[s.key];
+        if (pts.length < 2) return;
+
+        ctx.beginPath();
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 2;
+        ctx.lineJoin = "round";
+
+        pts.forEach((p, i) => {
+          const x = PAD.left + ((p.ts - tMin) / TREND_WINDOW_MS) * plotW;
+          const y = PAD.top + (1 - (p.value - vMin) / (vMax - vMin)) * plotH;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      });
+
+      // Update legend
+      const legend = document.getElementById("chart-legend");
+      if (legend && legend.children.length === 0) {
+        SENSORS.forEach(s => {
+          const item = document.createElement("div");
+          item.className = "legend-item";
+          const dot = document.createElement("div");
+          dot.className = "legend-dot";
+          dot.style.background = s.color;
+          const lbl = document.createElement("span");
+          lbl.textContent = `${s.key} (${s.unit})`;
+          item.appendChild(dot);
+          item.appendChild(lbl);
+          legend.appendChild(item);
+        });
+      }
     }
 
-    // Fetch PLC outputs
-    try {
-      const plcOut = await fetchJSON("/api/plc/outputs");
-      updateOutputs(plcOut);
-    } catch (e) {
-      console.warn("PLC /outputs:", e.message);
+    /* =========================================================================
+       Main refresh loop
+       ========================================================================= */
+    let refreshTimer = null;
+    let nodeHealthTimer = null;
+
+    async function refresh() {
+      const dot = document.getElementById("refresh-dot");
+      const lu = document.getElementById("last-updated");
+
+      try {
+        dot.classList.add("blink");
+
+        // Fetch gateway latest sensors (returns {topic: message_dict, ...})
+        let latest = {};
+        try {
+          const raw = await fetchJSON("/api/gateway/latest");
+          // Flatten: extract payload.value from each message
+          for (const [topic, msg] of Object.entries(raw)) {
+            if (msg && typeof msg === "object" && msg.payload) {
+              latest[topic] = { value: msg.payload.value, timestamp: msg.timestamp };
+            } else {
+              latest[topic] = msg;
+            }
+          }
+        } catch (e) {
+          console.warn("Gateway /latest:", e.message);
+          nodeStatus["gateway"] = "offline";
+        }
+        updateSensors(latest);
+
+        // Fetch PLC status
+        try {
+          const plcStatus = await fetchJSON("/api/plc/status");
+          updatePlcStatus(plcStatus);
+          // Alarms may come from PLC status
+          if (plcStatus.alarms) updateAlarms(plcStatus.alarms);
+        } catch (e) {
+          console.warn("PLC /status:", e.message);
+          nodeStatus["plc"] = "offline";
+        }
+
+        // Fetch PLC outputs
+        try {
+          const plcOut = await fetchJSON("/api/plc/outputs");
+          updateOutputs(plcOut);
+        } catch (e) {
+          console.warn("PLC /outputs:", e.message);
+        }
+
+        drawChart();
+
+        lu.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+      } catch (e) {
+        console.error("Refresh error:", e);
+        lu.textContent = "Error — retrying…";
+      } finally {
+        setTimeout(() => dot.classList.remove("blink"), 200);
+      }
     }
 
-    drawChart();
+    // Node health runs less frequently
+    async function refreshHealth() {
+      await refreshNodeHealth();
+    }
 
-    lu.textContent = `Updated ${new Date().toLocaleTimeString()}`;
-  } catch (e) {
-    console.error("Refresh error:", e);
-    lu.textContent = "Error — retrying…";
-  } finally {
-    setTimeout(() => dot.classList.remove("blink"), 200);
-  }
-}
+    (async function init() {
+      await refresh();
+      await refreshHealth();
 
-// Node health runs less frequently
-async function refreshHealth() {
-  await refreshNodeHealth();
-}
+      refreshTimer = setInterval(refresh, REFRESH_MS);
+      nodeHealthTimer = setInterval(refreshHealth, 10_000);   // every 10 s
 
-(async function init() {
-  await refresh();
-  await refreshHealth();
-
-  refreshTimer      = setInterval(refresh,        REFRESH_MS);
-  nodeHealthTimer   = setInterval(refreshHealth,  10_000);   // every 10 s
-
-  // Redraw chart on window resize
-  window.addEventListener("resize", drawChart);
-})();
-</script>
+      // Redraw chart on window resize
+      window.addEventListener("resize", drawChart);
+    })();
+  </script>
 
 </body>
+
 </html>

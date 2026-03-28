@@ -9,15 +9,20 @@ your physical installation.
 from __future__ import annotations
 
 DEFAULT_INPUTS: dict[str, str] = {
-    # sensor-1 uses TMP102+BME280 profile → publishes tmp102_temperature_c, etc.
+    # sensor-1 uses TMP102+BME280+DS18B20+SHT31 profile
     "temp_room1":  "rpi-net/sensor/sensor-1/tmp102_temperature_c",
-    # sensor-2 uses BH1750 profile → publishes illuminance_lux
+    # sensor-2 uses BH1750+MQ2 profile
     "light_room1": "rpi-net/sensor/sensor-2/illuminance_lux",
+    "gas_room1":   "rpi-net/sensor/sensor-2/mq2_gas_ppm",
+    # sensor-3 uses MPU6050+HC-SR04+INA219 profile
+    "distance_1":  "rpi-net/sensor/sensor-3/hc_sr04_distance_cm",
 }
 
 DEFAULT_OUTPUTS: dict[str, str] = {
     "valve_cooling":   "rpi-net/plc/plc-1/valve-1",
     "alarm_high_temp": "rpi-net/plc/plc-1/alarm/high_temp",
+    "alarm_gas":       "rpi-net/plc/plc-1/alarm/gas",
+    "alarm_proximity": "rpi-net/plc/plc-1/alarm/proximity",
 }
 
 

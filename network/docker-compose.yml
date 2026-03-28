@@ -1,5 +1,3 @@
-version: "3.9"
-
 # Multi-node Raspberry Pi simulation network.
 # All services target linux/arm/v7 by default; override PLATFORM in .env.
 
@@ -22,29 +20,29 @@ networks:
 volumes:
   gateway-data:
 
-# ---------------------------------------------------------------------------
-# Uncomment the mosquitto block to enable MQTT brokering.
-# Also set TRANSPORT=mqtt in .env and ensure asyncio-mqtt is installed in
-# the sensor-node and gateway images.
-# ---------------------------------------------------------------------------
-# mosquitto:
-#   <<: *common
-#   image: eclipse-mosquitto:2
-#   container_name: mosquitto
-#   ports:
-#     - "1883:1883"
-#     - "9001:9001"
-#   volumes:
-#     - ./shared:/opt/shared:ro
-#     - ./mosquitto/config:/mosquitto/config:ro
-#     - ./mosquitto/data:/mosquitto/data
-#     - ./mosquitto/log:/mosquitto/log
-#   healthcheck:
-#     test: ["CMD", "mosquitto_pub", "-h", "localhost", "-t", "healthcheck", "-m", "ping"]
-#     interval: 10s
-#     timeout: 5s
-#     retries: 3
-# ---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Uncomment the mosquitto block to enable MQTT brokering.
+    # Also set TRANSPORT=mqtt in .env and ensure asyncio-mqtt is installed in
+    # the sensor-node and gateway images.
+    # ---------------------------------------------------------------------------
+    # mosquitto:
+    #   <<: *common
+    #   image: eclipse-mosquitto:2
+    #   container_name: mosquitto
+    #   ports:
+    #     - "1883:1883"
+    #     - "9001:9001"
+    #   volumes:
+    #     - ./shared:/opt/shared:ro
+    #     - ./mosquitto/config:/mosquitto/config:ro
+    #     - ./mosquitto/data:/mosquitto/data
+    #     - ./mosquitto/log:/mosquitto/log
+    #   healthcheck:
+    #     test: ["CMD", "mosquitto_pub", "-h", "localhost", "-t", "healthcheck", "-m", "ping"]
+    #     interval: 10s
+    #     timeout: 5s
+    #     retries: 3
+    # ---------------------------------------------------------------------------
 
 services:
 
@@ -65,12 +63,11 @@ services:
     environment:
       NODE_ID: gateway
     healthcheck:
-      test: ["CMD", "python", "-c",
-             "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://gateway:8080/health')" ]
       interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   # ── Sensor Node 1 – TMP102 + BME280 ──────────────────────────────────────
   sensor-1:
@@ -86,7 +83,7 @@ services:
         condition: service_healthy
     environment:
       NODE_ID: sensor-1
-      SENSOR_PROFILE: TMP102+BME280
+      SENSOR_PROFILE: TMP102+BME280+DS18B20+SHT31
 
   # ── Sensor Node 2 – BH1750 ────────────────────────────────────────────────
   sensor-2:
@@ -102,7 +99,7 @@ services:
         condition: service_healthy
     environment:
       NODE_ID: sensor-2
-      SENSOR_PROFILE: BH1750
+      SENSOR_PROFILE: BH1750+MQ2
 
   # ── Sensor Node 3 – MPU6050 ──────────────────────────────────────────────
   sensor-3:
@@ -118,7 +115,7 @@ services:
         condition: service_healthy
     environment:
       NODE_ID: sensor-3
-      SENSOR_PROFILE: MPU6050
+      SENSOR_PROFILE: MPU6050+HC-SR04+INA219
 
   # ── PLC ───────────────────────────────────────────────────────────────────
   plc:
