@@ -1,0 +1,157 @@
+version: "3.9"
+
+# Multi-node Raspberry Pi simulation network.
+# All services target linux/arm/v7 by default; override PLATFORM in .env.
+
+# ---------------------------------------------------------------------------
+# Re-usable anchor for fields shared by every service
+# ---------------------------------------------------------------------------
+x-common: &common
+  platform: ${PLATFORM:-linux/arm/v7}
+  env_file: .env
+  volumes:
+    - ./shared:/opt/shared:ro
+  restart: unless-stopped
+  networks:
+    - rpi-net
+
+networks:
+  rpi-net:
+    driver: bridge
+
+volumes:
+  gateway-data:
+
+# ---------------------------------------------------------------------------
+# Uncomment the mosquitto block to enable MQTT brokering.
+# Also set TRANSPORT=mqtt in .env and ensure asyncio-mqtt is installed in
+# the sensor-node and gateway images.
+# ---------------------------------------------------------------------------
+# mosquitto:
+#   <<: *common
+#   image: eclipse-mosquitto:2
+#   container_name: mosquitto
+#   ports:
+#     - "1883:1883"
+#     - "9001:9001"
+#   volumes:
+#     - ./shared:/opt/shared:ro
+#     - ./mosquitto/config:/mosquitto/config:ro
+#     - ./mosquitto/data:/mosquitto/data
+#     - ./mosquitto/log:/mosquitto/log
+#   healthcheck:
+#     test: ["CMD", "mosquitto_pub", "-h", "localhost", "-t", "healthcheck", "-m", "ping"]
+#     interval: 10s
+#     timeout: 5s
+#     retries: 3
+# ---------------------------------------------------------------------------
+
+services:
+
+  # ── Gateway ───────────────────────────────────────────────────────────────
+  gateway:
+    <<: *common
+    build:
+      context: ./gateway
+      args:
+        TARGETPLATFORM: ${PLATFORM:-linux/arm/v7}
+    container_name: gateway
+    hostname: gateway
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./shared:/opt/shared:ro
+      - gateway-data:/var/lib/gateway
+    environment:
+      NODE_ID: gateway
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ── Sensor Node 1 – TMP102 + BME280 ──────────────────────────────────────
+  sensor-1:
+    <<: *common
+    build:
+      context: ./sensor-node
+      args:
+        TARGETPLATFORM: ${PLATFORM:-linux/arm/v7}
+    container_name: sensor-1
+    hostname: sensor-1
+    depends_on:
+      gateway:
+        condition: service_healthy
+    environment:
+      NODE_ID: sensor-1
+      SENSOR_PROFILE: TMP102+BME280
+
+  # ── Sensor Node 2 – BH1750 ────────────────────────────────────────────────
+  sensor-2:
+    <<: *common
+    build:
+      context: ./sensor-node
+      args:
+        TARGETPLATFORM: ${PLATFORM:-linux/arm/v7}
+    container_name: sensor-2
+    hostname: sensor-2
+    depends_on:
+      gateway:
+        condition: service_healthy
+    environment:
+      NODE_ID: sensor-2
+      SENSOR_PROFILE: BH1750
+
+  # ── Sensor Node 3 – MPU6050 ──────────────────────────────────────────────
+  sensor-3:
+    <<: *common
+    build:
+      context: ./sensor-node
+      args:
+        TARGETPLATFORM: ${PLATFORM:-linux/arm/v7}
+    container_name: sensor-3
+    hostname: sensor-3
+    depends_on:
+      gateway:
+        condition: service_healthy
+    environment:
+      NODE_ID: sensor-3
+      SENSOR_PROFILE: MPU6050
+
+  # ── PLC ───────────────────────────────────────────────────────────────────
+  plc:
+    <<: *common
+    build:
+      context: ./plc
+      args:
+        TARGETPLATFORM: ${PLATFORM:-linux/arm/v7}
+    container_name: plc
+    hostname: plc
+    ports:
+      - "8081:8081"
+    depends_on:
+      gateway:
+        condition: service_healthy
+    environment:
+      NODE_ID: plc
+
+  # ── HMI ───────────────────────────────────────────────────────────────────
+  hmi:
+    <<: *common
+    build:
+      context: ./hmi
+      args:
+        TARGETPLATFORM: ${PLATFORM:-linux/arm/v7}
+    container_name: hmi
+    hostname: hmi
+    ports:
+      - "3000:3000"
+    depends_on:
+      gateway:
+        condition: service_healthy
+      plc:
+        condition: service_started
+    environment:
+      NODE_ID: hmi

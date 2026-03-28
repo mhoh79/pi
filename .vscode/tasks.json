@@ -1,0 +1,147 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Pi: Cross-compile C (32-bit)",
+      "type": "shell",
+      "command": "arm-linux-gnueabihf-gcc",
+      "args": [
+        "-g",
+        "-o",
+        "${fileDirname}/${fileBasenameNoExtension}",
+        "${file}"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "problemMatcher": "$gcc",
+      "detail": "Cross-compile the active C file for ARMv7 (32-bit) using arm-linux-gnueabihf-gcc"
+    },
+    {
+      "label": "Pi: Cross-compile C (64-bit)",
+      "type": "shell",
+      "command": "aarch64-linux-gnu-gcc",
+      "args": [
+        "-g",
+        "-o",
+        "${fileDirname}/${fileBasenameNoExtension}",
+        "${file}"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "problemMatcher": "$gcc",
+      "detail": "Cross-compile the active C file for AArch64 (64-bit) using aarch64-linux-gnu-gcc"
+    },
+    {
+      "label": "Pi: Run ARM binary (QEMU)",
+      "type": "shell",
+      "command": "qemu-arm",
+      "args": [
+        "-L",
+        "/usr/arm-linux-gnueabihf",
+        "${fileDirname}/${fileBasenameNoExtension}"
+      ],
+      "group": "test",
+      "dependsOn": "Pi: Cross-compile C (32-bit)",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": false
+      },
+      "problemMatcher": [],
+      "detail": "Build (32-bit) then run the resulting ARM binary under QEMU user-mode emulation"
+    },
+    {
+      "label": "Pi: CMake configure (ARMv7)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "-B",
+        "build-arm",
+        "-DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/.devcontainer/toolchain/rpi-armv7.cmake",
+        "-G",
+        "Ninja"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "problemMatcher": [],
+      "detail": "Run CMake configure step targeting ARMv7 with the rpi-armv7 toolchain file, generating Ninja build files into build-arm/"
+    },
+    {
+      "label": "Pi: CMake build (ARMv7)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build",
+        "build-arm"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "dependsOn": "Pi: CMake configure (ARMv7)",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": false
+      },
+      "problemMatcher": "$gcc",
+      "detail": "Configure then build the CMake ARMv7 project (default build task)"
+    },
+    {
+      "label": "Pi: Open ARM shell",
+      "type": "shell",
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-it",
+        "--platform",
+        "linux/arm/v7",
+        "-v",
+        "${workspaceFolder}:/workspace",
+        "-w",
+        "/workspace",
+        "debian:bookworm-slim",
+        "/bin/bash"
+      ],
+      "group": "none",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "problemMatcher": [],
+      "detail": "Open an interactive ARMv7 Debian Bookworm shell via Docker with the workspace mounted at /workspace"
+    }
+  ]
+}

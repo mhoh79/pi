@@ -1,0 +1,34 @@
+# Dockerfile.arm - ARM container image for Raspberry Pi Python examples
+#
+# Build (from the repo root):
+#   docker buildx build \
+#     --platform linux/arm/v7 \
+#     -f examples/docker/Dockerfile.arm \
+#     -t rpi-blink:arm .
+#
+# Run:
+#   docker run --rm rpi-blink:arm
+
+FROM --platform=linux/arm/v7 debian:bookworm-slim
+
+# ---------------------------------------------------------------------------
+# System packages
+# ---------------------------------------------------------------------------
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        python3 \
+        python3-pip \
+        python3-gpiozero \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---------------------------------------------------------------------------
+# Application
+# ---------------------------------------------------------------------------
+COPY examples/python/ /app/
+
+WORKDIR /app
+
+# ---------------------------------------------------------------------------
+# Default command
+# ---------------------------------------------------------------------------
+CMD ["python3", "blink.py"]

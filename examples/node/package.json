@@ -1,0 +1,25 @@
+{
+  "name": "rpi-sensor-stream",
+  "version": "1.0.0",
+  "description": "Raspberry Pi sensor streaming server with mock I2C support",
+  "type": "module",
+  "main": "sensor-stream.js",
+  "scripts": {
+    "start": "node sensor-stream.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "optionalDependencies": {
+    "i2c-bus": "^5.2.3",
+    "onoff": "^6.0.3"
+  },
+  "keywords": [
+    "raspberry-pi",
+    "gpio",
+    "i2c",
+    "sensors",
+    "sse"
+  ],
+  "license": "MIT"
+}
