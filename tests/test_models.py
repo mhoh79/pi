@@ -165,7 +165,7 @@ class TestTypeDetection:
     """Verify the payload-key heuristic used by DdsTransport.publish()."""
 
     def test_sensor_reading_has_no_marker_keys(self):
-        d = SensorReading(topic="t", source="s", value=1.0).to_dict()
+        d = SensorReading(topic="t", source="s", timestamp=0.0, value=1.0).to_dict()
         inner = d["payload"]
         assert "alarm_id" not in inner
         assert "output_id" not in inner

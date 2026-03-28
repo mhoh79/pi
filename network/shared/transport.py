@@ -301,6 +301,7 @@ class DdsTransport(Transport):
             TOPIC_SENSOR_DATA,
         )
 
+        self._stop_event.clear()
         self._loop = asyncio.get_running_loop()
         self._participant = DomainParticipant(domain_id=self._domain_id)
 
@@ -340,6 +341,10 @@ class DdsTransport(Transport):
         ``"rpi-net/sensor/sensor-1/temperature"``).  The DDS topic is
         selected by inspecting the payload keys.
         """
+        if self._participant is None:
+            raise RuntimeError(
+                "DdsTransport not connected – call connect() first")
+
         from cyclonedds.pub import DataWriter
 
         from dds_types import TOPIC_ALARM_DATA, TOPIC_CONTROL_DATA, TOPIC_SENSOR_DATA
@@ -358,10 +363,15 @@ class DdsTransport(Transport):
             dds_topic_name = TOPIC_SENSOR_DATA
             model = SensorReading.from_legacy_dict(payload)
 
+        # Make the topic parameter authoritative (mirrors HttpTransport behaviour)
+        model.topic = topic
+
         dds_topic = self._topics.get(dds_topic_name)
         if dds_topic is None:
-            logger.error("DDS topic %r not registered", dds_topic_name)
-            return
+            raise RuntimeError(
+                f"DDS topic {dds_topic_name!r} is not registered; "
+                "call connect() first"
+            )
 
         if dds_topic_name not in self._writers:
             self._writers[dds_topic_name] = DataWriter(

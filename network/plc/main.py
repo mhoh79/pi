@@ -387,13 +387,20 @@ async def main() -> None:
 
     # Set up DDS transport if configured
     if TRANSPORT_TYPE == "dds":
-        from transport import create_transport
-        from dds_types import TOPIC_SENSOR_DATA
+        try:
+            from transport import create_transport
+            from dds_types import TOPIC_SENSOR_DATA
 
-        dds_transport = create_transport("dds")
-        await dds_transport.connect()
-        await dds_transport.subscribe(TOPIC_SENSOR_DATA, _on_sensor_data)
-        logger.info("PLC subscribed to DDS topic '%s'", TOPIC_SENSOR_DATA)
+            dds_transport = create_transport("dds")
+            await dds_transport.connect()
+            await dds_transport.subscribe(TOPIC_SENSOR_DATA, _on_sensor_data)
+            logger.info("PLC subscribed to DDS topic '%s'", TOPIC_SENSOR_DATA)
+        except Exception as exc:
+            logger.error(
+                "DDS transport init failed (%s) – falling back to HTTP mode",
+                exc,
+            )
+            dds_transport = None
 
     # Start scan loop as a background task
     loop_task = asyncio.create_task(
