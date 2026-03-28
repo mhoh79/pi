@@ -2,12 +2,15 @@
 main.py - HMI web server.
 
 Serves static files from ./static/ and proxies API calls to the
-gateway and PLC services.
+gateway and PLC services.  When TRANSPORT=dds, also subscribes to
+ControlData and AlarmData DDS topics and caches PLC outputs for the
+``/api/dds/plc`` endpoint.
 
 Environment variables
 ---------------------
 HMI_HOST    Bind address (default: 0.0.0.0)
 HMI_PORT    Listening port  (default: 3000)
+TRANSPORT   Transport back-end: ``http`` or ``dds`` (default: from .env)
 """
 
 from __future__ import annotations
@@ -16,7 +19,11 @@ import asyncio
 import logging
 import os
 import signal
+import sys
 from pathlib import Path
+from typing import Any, Dict
+
+sys.path.insert(0, "/opt/shared")
 
 import aiohttp_cors
 from aiohttp import web, ClientSession
@@ -35,6 +42,18 @@ logger = logging.getLogger("hmi")
 HMI_HOST: str = os.environ.get("HMI_HOST", "0.0.0.0")
 HMI_PORT: int = int(os.environ.get("HMI_PORT", 3000))
 STATIC_DIR: Path = Path(__file__).parent / "static"
+TRANSPORT_TYPE: str = os.environ.get("TRANSPORT", "http").lower().strip()
+
+# ---------------------------------------------------------------------------
+# DDS cache – updated by subscriber callbacks
+# ---------------------------------------------------------------------------
+_dds_plc_cache: Dict[str, Dict[str, Any]] = {}
+_dds_transport = None
+
+
+def _on_plc_data(app_topic: str, data: Dict[str, Any]) -> None:
+    """DDS callback – cache latest PLC output / alarm data by app topic."""
+    _dds_plc_cache[app_topic] = data
 
 
 # ---------------------------------------------------------------------------
@@ -92,7 +111,19 @@ def build_app() -> web.Application:
 # Entry point
 # ---------------------------------------------------------------------------
 async def main() -> None:
+    global _dds_transport
     app = build_app()
+
+    # Start DDS subscribers if configured
+    if TRANSPORT_TYPE == "dds":
+        from transport import create_transport
+        from dds_types import TOPIC_CONTROL_DATA, TOPIC_ALARM_DATA
+
+        _dds_transport = create_transport("dds")
+        await _dds_transport.connect()
+        await _dds_transport.subscribe(TOPIC_CONTROL_DATA, _on_plc_data)
+        await _dds_transport.subscribe(TOPIC_ALARM_DATA, _on_plc_data)
+        logger.info("HMI subscribed to DDS topics: ControlData, AlarmData")
 
     runner = web.AppRunner(app)
     await runner.setup()
@@ -111,6 +142,10 @@ async def main() -> None:
         loop.add_signal_handler(sig, _signal_handler)
 
     await shutdown_event.wait()
+
+    if _dds_transport is not None:
+        await _dds_transport.close()
+
     await runner.cleanup()
     logger.info("HMI server stopped")
 

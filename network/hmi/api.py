@@ -5,6 +5,7 @@ Routing rules
 -------------
   /api/gateway/*  →  http://gateway:8080/api/*
   /api/plc/*      →  http://plc:8081/api/*
+  /api/dds/plc    →  local DDS cache of PLC outputs / alarms
 
 All request methods, headers, query strings, and bodies are forwarded
 transparently.  Responses are streamed back to the browser.
@@ -14,7 +15,10 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 from typing import Callable
+
+sys.path.insert(0, "/opt/shared")
 
 from aiohttp import web, ClientSession, ClientTimeout, ClientError
 
@@ -106,9 +110,21 @@ def register_routes(app: web.Application) -> None:
     app.router.add_route("*", "/api/gateway/{tail:.*}", gateway_handler)
     app.router.add_route("*", "/api/plc/{tail:.*}", plc_handler)
 
+    # DDS-sourced PLC data endpoint (populated by main.py DDS subscriber)
+    app.router.add_get("/api/dds/plc", _handle_dds_plc)
+
     logger.info(
         "API proxy registered: /api/gateway/* → %s/api/*", GATEWAY_BASE
     )
     logger.info(
         "API proxy registered: /api/plc/*     → %s/api/*", PLC_BASE
     )
+    logger.info("API endpoint registered: /api/dds/plc (DDS cache)")
+
+
+async def _handle_dds_plc(request: web.Request) -> web.Response:
+    """GET /api/dds/plc – return cached PLC data received via DDS."""
+    # Lazy import to avoid circular dependency at module load time
+    from main import _dds_plc_cache
+
+    return web.json_response(_dds_plc_cache)

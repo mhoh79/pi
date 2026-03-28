@@ -29,7 +29,7 @@ sys.path.insert(0, "/opt/shared")
 from aiohttp import web
 
 from store import TimeSeriesStore
-from api import register_routes
+from api import register_routes, broadcast
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -44,6 +44,7 @@ logger = logging.getLogger("gateway")
 GATEWAY_HOST: str = os.environ.get("GATEWAY_HOST", "0.0.0.0")
 GATEWAY_PORT: int = int(os.environ.get("GATEWAY_PORT", "8080"))
 STORE_MAXLEN: int = int(os.environ.get("STORE_MAXLEN", "1000"))
+TRANSPORT_TYPE: str = os.environ.get("TRANSPORT", "http").lower().strip()
 
 
 # ---------------------------------------------------------------------------
@@ -74,12 +75,45 @@ def build_app() -> web.Application:
 
 
 # ---------------------------------------------------------------------------
+# DDS subscriber setup
+# ---------------------------------------------------------------------------
+
+_dds_transport = None
+
+
+async def _start_dds_subscribers(store: TimeSeriesStore) -> None:
+    """Create a DDS transport and subscribe to all three DDS topics."""
+    global _dds_transport
+
+    from transport import create_transport
+    from dds_types import TOPIC_SENSOR_DATA, TOPIC_CONTROL_DATA, TOPIC_ALARM_DATA
+
+    _dds_transport = create_transport("dds")
+    await _dds_transport.connect()
+
+    def _on_dds_data(app_topic: str, data: dict) -> None:
+        """Callback dispatched on the asyncio thread by DdsTransport."""
+        store.add(app_topic, data)
+        broadcast(data)
+        logger.debug("DDS → store: topic=%s", app_topic)
+
+    for dds_topic in (TOPIC_SENSOR_DATA, TOPIC_CONTROL_DATA, TOPIC_ALARM_DATA):
+        await _dds_transport.subscribe(dds_topic, _on_dds_data)
+        logger.info("Gateway subscribed to DDS topic '%s'", dds_topic)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
 
 async def main() -> None:
     app = build_app()
+
+    # Start DDS subscribers if transport is DDS
+    if TRANSPORT_TYPE == "dds":
+        store = app["store"]
+        await _start_dds_subscribers(store)
 
     runner = web.AppRunner(app)
     await runner.setup()
@@ -98,6 +132,10 @@ async def main() -> None:
         loop.add_signal_handler(sig, _on_signal)
 
     await shutdown_event.wait()
+
+    if _dds_transport is not None:
+        await _dds_transport.close()
+
     await runner.cleanup()
     logger.info("Gateway stopped")
 
