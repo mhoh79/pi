@@ -1,7 +1,7 @@
 FROM --platform=${TARGETPLATFORM:-linux/arm/v7} python:3.11-slim-bookworm
 
 # Install runtime dependencies
-RUN pip install --no-cache-dir aiohttp
+RUN pip install --no-cache-dir aiohttp pydantic cyclonedds
 
 # Copy application code
 COPY . /app

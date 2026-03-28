@@ -5,22 +5,27 @@ Routing rules
 -------------
   /api/gateway/*  →  http://gateway:8080/api/*
   /api/plc/*      →  http://plc:8081/api/*
+  /api/dds/plc    →  local DDS cache of PLC outputs / alarms
 
 All request methods, headers, query strings, and bodies are forwarded
 transparently.  Responses are streamed back to the browser.
 """
 
 from __future__ import annotations
+from aiohttp import web, ClientSession, ClientTimeout, ClientError
 
 import logging
 import os
+import sys
 from typing import Callable
 
-from aiohttp import web, ClientSession, ClientTimeout, ClientError
+sys.path.insert(0, "/opt/shared")
+
 
 logger = logging.getLogger("hmi.api")
 
-GATEWAY_BASE: str = os.environ.get("GATEWAY_URL", "http://gateway:8080").rstrip("/")
+GATEWAY_BASE: str = os.environ.get(
+    "GATEWAY_URL", "http://gateway:8080").rstrip("/")
 PLC_BASE: str = os.environ.get("PLC_URL", "http://plc:8081").rstrip("/")
 
 PROXY_TIMEOUT = ClientTimeout(total=10)
@@ -63,7 +68,8 @@ def _make_proxy_handler(upstream_base: str, strip_prefix: str) -> Callable:
         headers = _forward_headers(request)
         body = await request.read()
 
-        logger.debug("Proxy %s %s → %s", request.method, request.path, upstream_url)
+        logger.debug("Proxy %s %s → %s", request.method,
+                     request.path, upstream_url)
 
         try:
             async with session.request(
@@ -106,9 +112,21 @@ def register_routes(app: web.Application) -> None:
     app.router.add_route("*", "/api/gateway/{tail:.*}", gateway_handler)
     app.router.add_route("*", "/api/plc/{tail:.*}", plc_handler)
 
+    # DDS-sourced PLC data endpoint (populated by main.py DDS subscriber)
+    app.router.add_get("/api/dds/plc", _handle_dds_plc)
+
     logger.info(
         "API proxy registered: /api/gateway/* → %s/api/*", GATEWAY_BASE
     )
     logger.info(
         "API proxy registered: /api/plc/*     → %s/api/*", PLC_BASE
     )
+    logger.info("API endpoint registered: /api/dds/plc (DDS cache)")
+
+
+async def _handle_dds_plc(request: web.Request) -> web.Response:
+    """GET /api/dds/plc – return cached PLC data received via DDS."""
+    # The DDS PLC cache is stored on the application object by the DDS subscriber.
+    # Access it via request.app to avoid importing from the main module.
+    dds_plc_cache = request.app.get("dds_plc_cache") or {}
+    return web.json_response(dds_plc_cache)

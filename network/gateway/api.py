@@ -41,7 +41,10 @@ _sse_queues: Set[asyncio.Queue] = set()
 
 
 def _broadcast(message: dict) -> None:
-    """Push a message dict to all active SSE subscribers."""
+    """Push a message dict to all active SSE subscribers.
+
+    Also accessible as ``broadcast()`` for use by DDS listeners.
+    """
     payload = json.dumps(message, default=str)
     dead: list[asyncio.Queue] = []
     for q in _sse_queues:
@@ -51,6 +54,10 @@ def _broadcast(message: dict) -> None:
             dead.append(q)
     for q in dead:
         _sse_queues.discard(q)
+
+
+# Public alias for use by DDS listener in main.py
+broadcast = _broadcast
 
 
 # ---------------------------------------------------------------------------
@@ -143,7 +150,8 @@ async def handle_history(request: web.Request) -> web.Response:
         try:
             since_ts = float(since_str)
         except ValueError as exc:
-            raise web.HTTPBadRequest(reason=f"Invalid 'since' value: {since_str!r}") from exc
+            raise web.HTTPBadRequest(
+                reason=f"Invalid 'since' value: {since_str!r}") from exc
         messages = store.since(topic, since_ts)
     else:
         try:

@@ -73,7 +73,8 @@ class TMP102Simulator(SensorSimulator):
         self._base = base_temp
 
     def read(self) -> Dict[str, Any]:
-        temp = self._base + self._sine(period_s=120, amplitude=3.0) + self._noise(0.05)
+        temp = self._base + \
+            self._sine(period_s=120, amplitude=3.0) + self._noise(0.05)
         # Quantise to 0.0625 °C steps (12-bit ADC)
         temp = round(temp / 0.0625) * 0.0625
         return {
@@ -185,7 +186,8 @@ class MPU6050Simulator(SensorSimulator):
         gz = self._sine(period_s=12, amplitude=0.3) + self._noise(0.01)
 
         # On-die temperature runs warm (offset ~35 °C)
-        temp = 35.0 + self._sine(period_s=60, amplitude=0.5) + self._noise(0.02)
+        temp = 35.0 + self._sine(period_s=60,
+                                 amplitude=0.5) + self._noise(0.02)
 
         return {
             "accel_x_g": round(ax, 6),
@@ -230,6 +232,250 @@ class TMP102BME280Simulator(SensorSimulator):
 
 
 # ---------------------------------------------------------------------------
+# DS18B20 – 1-Wire waterproof temperature sensor
+# ---------------------------------------------------------------------------
+
+
+class DS18B20Simulator(SensorSimulator):
+    """
+    Simulates a Maxim DS18B20 1-Wire temperature sensor.
+
+    Nominal range: -55 °C to +125 °C; resolution 0.0625 °C (12-bit).
+    Default idle temperature: 20 °C with a ±4 °C slow drift.
+    """
+
+    def __init__(self, base_temp: float = 20.0) -> None:
+        self._base = base_temp
+
+    def read(self) -> Dict[str, Any]:
+        temp = self._base + \
+            self._sine(period_s=180, amplitude=4.0) + self._noise(0.08)
+        temp = round(temp / 0.0625) * 0.0625
+        return {
+            "temperature_c": round(temp, 4),
+            "sensor": "DS18B20",
+        }
+
+
+# ---------------------------------------------------------------------------
+# SHT31 – precision temperature + humidity sensor
+# ---------------------------------------------------------------------------
+
+
+class SHT31Simulator(SensorSimulator):
+    """
+    Simulates a Sensirion SHT31-D precision temperature/humidity sensor.
+
+    Outputs temperature (°C) and relative humidity (%RH).
+    """
+
+    def __init__(
+        self,
+        base_temp: float = 21.0,
+        base_humidity: float = 60.0,
+    ) -> None:
+        self._base_temp = base_temp
+        self._base_hum = base_humidity
+
+    def read(self) -> Dict[str, Any]:
+        temp = (
+            self._base_temp
+            + self._sine(period_s=100, amplitude=2.0)
+            + self._noise(0.05)
+        )
+        humidity = (
+            self._base_hum
+            + self._sine(period_s=160, amplitude=6.0)
+            + self._noise(0.25)
+        )
+        humidity = max(0.0, min(100.0, humidity))
+        return {
+            "temperature_c": round(temp, 4),
+            "humidity_pct": round(humidity, 4),
+            "sensor": "SHT31",
+        }
+
+
+# ---------------------------------------------------------------------------
+# HC-SR04 – ultrasonic distance sensor
+# ---------------------------------------------------------------------------
+
+
+class HC_SR04Simulator(SensorSimulator):
+    """
+    Simulates an HC-SR04 ultrasonic ranging module.
+
+    Effective range: 2–400 cm; output in centimetres.
+    Default simulates an object oscillating between 50 and 200 cm.
+    """
+
+    def __init__(self, base_distance: float = 120.0) -> None:
+        self._base = base_distance
+
+    def read(self) -> Dict[str, Any]:
+        dist = (
+            self._base
+            + self._sine(period_s=30, amplitude=70.0)
+            + self._noise(2.0)
+        )
+        dist = max(2.0, min(400.0, dist))
+        return {
+            "distance_cm": round(dist, 2),
+            "sensor": "HC-SR04",
+        }
+
+
+# ---------------------------------------------------------------------------
+# INA219 – current / power monitor
+# ---------------------------------------------------------------------------
+
+
+class INA219Simulator(SensorSimulator):
+    """
+    Simulates a Texas Instruments INA219 high-side current/power monitor.
+
+    Outputs current (mA) and power (mW) assuming a fixed 5 V rail.
+    """
+
+    RAIL_VOLTAGE: float = 5.0  # volts
+
+    def __init__(self, base_current_ma: float = 250.0) -> None:
+        self._base = base_current_ma
+
+    def read(self) -> Dict[str, Any]:
+        current = (
+            self._base
+            + self._sine(period_s=45, amplitude=150.0)
+            + self._noise(5.0)
+        )
+        current = max(0.0, current)
+        power = current * self.RAIL_VOLTAGE  # mA × V = mW
+        return {
+            "current_ma": round(current, 2),
+            "power_mw": round(power, 2),
+            "sensor": "INA219",
+        }
+
+
+# ---------------------------------------------------------------------------
+# MQ-2 – gas / smoke sensor
+# ---------------------------------------------------------------------------
+
+
+class MQ2Simulator(SensorSimulator):
+    """
+    Simulates an MQ-2 gas/smoke sensor.
+
+    Output: concentration in parts-per-million (ppm).
+    Baseline ~50 ppm with random spike events to simulate gas leaks.
+    """
+
+    def __init__(self, base_ppm: float = 50.0) -> None:
+        self._base = base_ppm
+
+    def read(self) -> Dict[str, Any]:
+        ppm = (
+            self._base
+            + self._sine(period_s=240, amplitude=30.0)
+            + self._noise(3.0)
+        )
+        # Random spike: ~0.5 % chance per read (≈ every 200 s at 1 Hz)
+        if random.random() < 0.005:
+            ppm += random.uniform(450, 850)
+        ppm = max(0.0, ppm)
+        return {
+            "gas_ppm": round(ppm, 2),
+            "sensor": "MQ-2",
+        }
+
+
+# ---------------------------------------------------------------------------
+# Composite: TMP102 + BME280 + DS18B20 + SHT31
+# ---------------------------------------------------------------------------
+
+
+class TMP102BME280DS18B20SHT31Simulator(SensorSimulator):
+    """All four temperature/environment sensors on one I2C/1-Wire bus."""
+
+    def __init__(self) -> None:
+        self._tmp = TMP102Simulator()
+        self._bme = BME280Simulator()
+        self._ds = DS18B20Simulator()
+        self._sht = SHT31Simulator()
+
+    def read(self) -> Dict[str, Any]:
+        tmp_data = self._tmp.read()
+        bme_data = self._bme.read()
+        ds_data = self._ds.read()
+        sht_data = self._sht.read()
+        return {
+            "tmp102_temperature_c": tmp_data["temperature_c"],
+            "bme280_temperature_c": bme_data["temperature_c"],
+            "humidity_pct": bme_data["humidity_pct"],
+            "pressure_hpa": bme_data["pressure_hpa"],
+            "ds18b20_temperature_c": ds_data["temperature_c"],
+            "sht31_temperature_c": sht_data["temperature_c"],
+            "sht31_humidity_pct": sht_data["humidity_pct"],
+            "sensor": "TMP102+BME280+DS18B20+SHT31",
+        }
+
+
+# ---------------------------------------------------------------------------
+# Composite: BH1750 + MQ-2
+# ---------------------------------------------------------------------------
+
+
+class BH1750MQ2Simulator(SensorSimulator):
+    """Ambient light plus gas/smoke sensing on one node."""
+
+    def __init__(self) -> None:
+        self._bh = BH1750Simulator()
+        self._mq = MQ2Simulator()
+
+    def read(self) -> Dict[str, Any]:
+        bh_data = self._bh.read()
+        mq_data = self._mq.read()
+        return {
+            "illuminance_lux": bh_data["illuminance_lux"],
+            "mq2_gas_ppm": mq_data["gas_ppm"],
+            "sensor": "BH1750+MQ2",
+        }
+
+
+# ---------------------------------------------------------------------------
+# Composite: MPU6050 + HC-SR04 + INA219
+# ---------------------------------------------------------------------------
+
+
+class MPU6050HCSR04INA219Simulator(SensorSimulator):
+    """IMU plus distance and power monitoring on one node."""
+
+    def __init__(self) -> None:
+        self._mpu = MPU6050Simulator()
+        self._hc = HC_SR04Simulator()
+        self._ina = INA219Simulator()
+
+    def read(self) -> Dict[str, Any]:
+        mpu_data = self._mpu.read()
+        hc_data = self._hc.read()
+        ina_data = self._ina.read()
+        data = {
+            "accel_x_g": mpu_data["accel_x_g"],
+            "accel_y_g": mpu_data["accel_y_g"],
+            "accel_z_g": mpu_data["accel_z_g"],
+            "gyro_x_dps": mpu_data["gyro_x_dps"],
+            "gyro_y_dps": mpu_data["gyro_y_dps"],
+            "gyro_z_dps": mpu_data["gyro_z_dps"],
+            "temperature_c": mpu_data["temperature_c"],
+            "hc_sr04_distance_cm": hc_data["distance_cm"],
+            "ina219_current_ma": ina_data["current_ma"],
+            "ina219_power_mw": ina_data["power_mw"],
+            "sensor": "MPU6050+HC-SR04+INA219",
+        }
+        return data
+
+
+# ---------------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------------
 
@@ -239,6 +485,14 @@ _REGISTRY: Dict[str, type] = {
     "bh1750": BH1750Simulator,
     "mpu6050": MPU6050Simulator,
     "tmp102+bme280": TMP102BME280Simulator,
+    "ds18b20": DS18B20Simulator,
+    "sht31": SHT31Simulator,
+    "hc-sr04": HC_SR04Simulator,
+    "ina219": INA219Simulator,
+    "mq2": MQ2Simulator,
+    "tmp102+bme280+ds18b20+sht31": TMP102BME280DS18B20SHT31Simulator,
+    "bh1750+mq2": BH1750MQ2Simulator,
+    "mpu6050+hc-sr04+ina219": MPU6050HCSR04INA219Simulator,
 }
 
 

@@ -1,6 +1,6 @@
 FROM --platform=${TARGETPLATFORM:-linux/arm/v7} python:3.11-slim-bookworm
 
-RUN pip install --no-cache-dir aiohttp
+RUN pip install --no-cache-dir aiohttp pydantic cyclonedds
 
 COPY . /app
 WORKDIR /app

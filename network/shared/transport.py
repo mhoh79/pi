@@ -4,6 +4,7 @@ transport.py – Pluggable transport abstraction for the RPi simulation network.
 Supported back-ends
 -------------------
   http   – aiohttp-based HTTP polling / POST (default, zero extra deps)
+  dds    – CycloneDDS pub/sub  (install cyclonedds + pydantic to enable)
   mqtt   – asyncio-mqtt stub  (install asyncio-mqtt to enable)
   opcua  – asyncua stub       (install asyncua to enable)
 
@@ -23,6 +24,7 @@ import abc
 import asyncio
 import logging
 import os
+import threading
 from typing import Any, Callable, Dict, List, Optional
 
 import aiohttp
@@ -120,7 +122,8 @@ class HttpTransport(Transport):
             try:
                 async with self._session.get(f"{self._base_url}/health") as resp:
                     if resp.status == 200:
-                        logger.info("HttpTransport connected to %s", self._base_url)
+                        logger.info(
+                            "HttpTransport connected to %s", self._base_url)
                         return
             except aiohttp.ClientError:
                 pass
@@ -151,7 +154,8 @@ class HttpTransport(Transport):
     async def publish(self, topic: str, payload: Dict[str, Any]) -> None:
         """POST *payload* to ``/api/ingest`` tagged with *topic*."""
         if self._session is None:
-            raise RuntimeError("Transport not connected – call connect() first")
+            raise RuntimeError(
+                "Transport not connected – call connect() first")
 
         body = {**payload, "topic": topic}  # topic always wins over payload
         url = f"{self._base_url}/api/ingest"
@@ -181,7 +185,8 @@ class HttpTransport(Transport):
         """
         self._subscriptions.setdefault(topic, []).append(callback)
         # Only one polling task per topic
-        existing = [t for t in self._poll_tasks if not t.done() and t.get_name() == topic]
+        existing = [t for t in self._poll_tasks if not t.done()
+                    and t.get_name() == topic]
         if not existing:
             task = asyncio.create_task(self._poll_loop(topic), name=topic)
             self._poll_tasks.append(task)
@@ -207,11 +212,13 @@ class HttpTransport(Transport):
                                 try:
                                     cb(topic, data)
                                 except Exception as exc:  # noqa: BLE001
-                                    logger.error("Subscriber callback error: %s", exc)
+                                    logger.error(
+                                        "Subscriber callback error: %s", exc)
                     elif resp.status == 404:
                         pass  # topic not yet populated – normal at startup
                     else:
-                        logger.warning("Poll %s returned HTTP %d", url, resp.status)
+                        logger.warning(
+                            "Poll %s returned HTTP %d", url, resp.status)
             except asyncio.CancelledError:
                 break
             except aiohttp.ClientError as exc:
@@ -231,7 +238,8 @@ class HttpTransport(Transport):
         Returns the parsed JSON body, or ``{}`` on error.
         """
         if self._session is None:
-            raise RuntimeError("Transport not connected – call connect() first")
+            raise RuntimeError(
+                "Transport not connected – call connect() first")
 
         url = f"{self._base_url}{path}"
         method = method.upper()
@@ -249,6 +257,203 @@ class HttpTransport(Transport):
         except aiohttp.ClientError as exc:
             logger.error("request %s %s failed: %s", method, url, exc)
             return {}
+
+
+# ---------------------------------------------------------------------------
+# DDS transport (CycloneDDS)
+# ---------------------------------------------------------------------------
+
+
+class DdsTransport(Transport):
+    """
+    CycloneDDS-based transport.
+
+    Publish   → write an IdlStruct sample to the appropriate DDS topic
+    Subscribe → background thread calling ``take_iter()`` on a DataReader,
+                dispatching callbacks to the asyncio event loop
+    Request   → not supported (DDS is pub/sub only)
+
+    Requires: ``pip install cyclonedds pydantic``
+    """
+
+    def __init__(self, domain_id: int = 0) -> None:
+        self._domain_id = domain_id
+        self._participant: Any = None
+        self._topics: Dict[str, Any] = {}       # DDS topic name → Topic
+        self._writers: Dict[str, Any] = {}       # DDS topic name → DataWriter
+        self._readers: List[Any] = []
+        self._reader_threads: List[threading.Thread] = []
+        self._stop_event = threading.Event()
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+
+    # -- lifecycle -----------------------------------------------------------
+
+    async def connect(self) -> None:
+        from cyclonedds.core import DomainParticipant
+        from cyclonedds.topic import Topic as DdsTopic
+
+        from dds_types import (
+            DdsAlarmEvent,
+            DdsControlOutput,
+            DdsSensorReading,
+            TOPIC_ALARM_DATA,
+            TOPIC_CONTROL_DATA,
+            TOPIC_SENSOR_DATA,
+        )
+
+        self._stop_event.clear()
+        self._loop = asyncio.get_running_loop()
+        self._participant = DomainParticipant(domain_id=self._domain_id)
+
+        self._topics[TOPIC_SENSOR_DATA] = DdsTopic(
+            self._participant, TOPIC_SENSOR_DATA, DdsSensorReading,
+        )
+        self._topics[TOPIC_CONTROL_DATA] = DdsTopic(
+            self._participant, TOPIC_CONTROL_DATA, DdsControlOutput,
+        )
+        self._topics[TOPIC_ALARM_DATA] = DdsTopic(
+            self._participant, TOPIC_ALARM_DATA, DdsAlarmEvent,
+        )
+        logger.info(
+            "DdsTransport connected (domain=%d, topics=%s)",
+            self._domain_id,
+            list(self._topics.keys()),
+        )
+
+    async def close(self) -> None:
+        self._stop_event.set()
+        for t in self._reader_threads:
+            t.join(timeout=3.0)
+        self._reader_threads.clear()
+        self._readers.clear()
+        self._writers.clear()
+        self._topics.clear()
+        self._participant = None
+        logger.info("DdsTransport closed")
+
+    # -- publish -------------------------------------------------------------
+
+    async def publish(self, topic: str, payload: Dict[str, Any]) -> None:
+        """
+        Detect payload type, convert to DDS sample, and write.
+
+        The *topic* parameter is the application-level topic string (e.g.
+        ``"rpi-net/sensor/sensor-1/temperature"``).  The DDS topic is
+        selected by inspecting the payload keys.
+        """
+        if self._participant is None:
+            raise RuntimeError(
+                "DdsTransport not connected – call connect() first")
+
+        from cyclonedds.pub import DataWriter
+
+        from dds_types import TOPIC_ALARM_DATA, TOPIC_CONTROL_DATA, TOPIC_SENSOR_DATA
+        from models import AlarmEvent, ControlOutput, SensorReading
+
+        # Determine DDS topic from payload content
+        inner = payload.get("payload", payload) if isinstance(
+            payload, dict) else payload
+        if isinstance(inner, dict) and "alarm_id" in inner:
+            dds_topic_name = TOPIC_ALARM_DATA
+            model = AlarmEvent.from_legacy_dict(payload)
+        elif isinstance(inner, dict) and "output_id" in inner:
+            dds_topic_name = TOPIC_CONTROL_DATA
+            model = ControlOutput.from_legacy_dict(payload)
+        else:
+            dds_topic_name = TOPIC_SENSOR_DATA
+            model = SensorReading.from_legacy_dict(payload)
+
+        # Make the topic parameter authoritative (mirrors HttpTransport behaviour)
+        model.topic = topic
+
+        dds_topic = self._topics.get(dds_topic_name)
+        if dds_topic is None:
+            raise RuntimeError(
+                f"DDS topic {dds_topic_name!r} is not registered; "
+                "call connect() first"
+            )
+
+        if dds_topic_name not in self._writers:
+            self._writers[dds_topic_name] = DataWriter(
+                self._participant, dds_topic)
+
+        writer = self._writers[dds_topic_name]
+        sample = model.to_dds()
+        writer.write(sample)
+        logger.debug("DDS write → %s (app-topic=%s)", dds_topic_name, topic)
+
+    # -- subscribe -----------------------------------------------------------
+
+    async def subscribe(
+        self,
+        topic: str,
+        callback: Callable[[str, Dict[str, Any]], None],
+    ) -> None:
+        """
+        Subscribe to a DDS topic.
+
+        *topic* must be one of the DDS topic name constants
+        (``"SensorData"``, ``"ControlData"``, ``"AlarmData"``).  A daemon
+        thread is spawned that reads samples and dispatches them to the
+        asyncio event loop via ``call_soon_threadsafe``.
+        """
+        from cyclonedds.sub import DataReader
+
+        from dds_types import TOPIC_ALARM_DATA, TOPIC_CONTROL_DATA, TOPIC_SENSOR_DATA
+        from models import AlarmEvent, ControlOutput, SensorReading
+
+        dds_topic = self._topics.get(topic)
+        if dds_topic is None:
+            logger.error(
+                "Cannot subscribe: DDS topic %r not registered", topic)
+            return
+
+        reader = DataReader(self._participant, dds_topic)
+        self._readers.append(reader)
+
+        # Map DDS topic name → Pydantic model class for conversion
+        model_map = {
+            TOPIC_SENSOR_DATA: SensorReading,
+            TOPIC_CONTROL_DATA: ControlOutput,
+            TOPIC_ALARM_DATA: AlarmEvent,
+        }
+        model_cls = model_map[topic]
+
+        def _reader_loop() -> None:
+            """Blocking loop in a daemon thread."""
+            while not self._stop_event.is_set():
+                try:
+                    for sample in reader.take_iter(timeout=1.0):
+                        model = model_cls.from_dds(sample)
+                        data = model.to_dict()
+                        app_topic = data.get("topic", topic)
+                        if self._loop is not None and self._loop.is_running():
+                            self._loop.call_soon_threadsafe(
+                                callback, app_topic, data)
+                except Exception as exc:  # noqa: BLE001
+                    if not self._stop_event.is_set():
+                        logger.warning(
+                            "DDS reader error on %s: %s", topic, exc)
+
+        thread = threading.Thread(
+            target=_reader_loop, daemon=True, name=f"dds-reader-{topic}",
+        )
+        thread.start()
+        self._reader_threads.append(thread)
+        logger.info("DDS subscriber started for topic '%s'", topic)
+
+    # -- request (not supported) ---------------------------------------------
+
+    async def request(
+        self,
+        method: str,
+        path: str,
+        payload: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        raise NotImplementedError(
+            "DdsTransport does not support request/response.  "
+            "Use an HttpTransport for REST-style calls."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -361,8 +566,9 @@ def create_transport(transport_type: Optional[str] = None) -> Transport:
     Parameters
     ----------
     transport_type:
-        ``"http"``, ``"mqtt"``, or ``"opcua"``.  When *None* the value of
-        the ``TRANSPORT`` environment variable is used (default ``"http"``).
+        ``"http"``, ``"dds"``, ``"mqtt"``, or ``"opcua"``.  When *None* the
+        value of the ``TRANSPORT`` environment variable is used
+        (default ``"http"``).
 
     Raises
     ------
@@ -378,9 +584,22 @@ def create_transport(transport_type: Optional[str] = None) -> Transport:
         host = os.environ.get("GATEWAY_HOST", "gateway")
         port = os.environ.get("GATEWAY_PORT", "8080")
         base_url = f"http://{host}:{port}"
-        poll_interval = float(os.environ.get("SENSOR_INTERVAL_MS", "1000")) / 1000.0
-        logger.info("Creating HttpTransport → %s (poll %.1fs)", base_url, poll_interval)
+        poll_interval = float(os.environ.get(
+            "SENSOR_INTERVAL_MS", "1000")) / 1000.0
+        logger.info("Creating HttpTransport → %s (poll %.1fs)",
+                    base_url, poll_interval)
         return HttpTransport(base_url=base_url, poll_interval=poll_interval)
+
+    if transport_type == "dds":
+        domain_id = int(os.environ.get("DDS_DOMAIN_ID", "0"))
+        logger.info("Creating DdsTransport (domain=%d)", domain_id)
+        try:
+            return DdsTransport(domain_id=domain_id)
+        except ImportError as exc:
+            raise ImportError(
+                "DDS transport requires additional dependencies. "
+                "Install them with: pip install cyclonedds pydantic"
+            ) from exc
 
     if transport_type == "mqtt":
         return MqttTransport()
@@ -390,5 +609,5 @@ def create_transport(transport_type: Optional[str] = None) -> Transport:
 
     raise ValueError(
         f"Unknown transport type {transport_type!r}.  "
-        "Valid choices: 'http', 'mqtt', 'opcua'."
+        "Valid choices: 'http', 'dds', 'mqtt', 'opcua'."
     )
