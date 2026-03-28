@@ -6,10 +6,9 @@ RUN pip install --no-cache-dir aiohttp
 # Copy application code
 COPY . /app
 
-# Copy shared library for standalone builds.
-# In production, ./shared is bind-mounted at /opt/shared:ro by docker-compose.
-# This COPY ensures the image works even when run outside Compose.
-COPY ../shared /opt/shared
+# Note: /opt/shared is bind-mounted at runtime by docker-compose.
+# For standalone builds, mount or copy the shared/ directory manually.
+RUN mkdir -p /opt/shared
 
 WORKDIR /app
 

@@ -112,10 +112,29 @@ class HttpTransport(Transport):
 
     # -- lifecycle -----------------------------------------------------------
 
-    async def connect(self) -> None:
+    async def connect(self, retries: int = 5, backoff: float = 2.0) -> None:
         if self._session is None or self._session.closed:
             self._session = aiohttp.ClientSession(timeout=self._timeout)
-        logger.info("HttpTransport connected to %s", self._base_url)
+        # Verify gateway is reachable before declaring connected
+        for attempt in range(1, retries + 1):
+            try:
+                async with self._session.get(f"{self._base_url}/health") as resp:
+                    if resp.status == 200:
+                        logger.info("HttpTransport connected to %s", self._base_url)
+                        return
+            except aiohttp.ClientError:
+                pass
+            if attempt < retries:
+                wait = backoff * attempt
+                logger.warning(
+                    "Gateway not ready (attempt %d/%d), retrying in %.0fs...",
+                    attempt, retries, wait,
+                )
+                await asyncio.sleep(wait)
+        # Proceed anyway — gateway may come up later
+        logger.warning(
+            "Gateway not reachable after %d attempts; proceeding anyway", retries
+        )
 
     async def close(self) -> None:
         for task in self._poll_tasks:

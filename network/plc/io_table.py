@@ -9,8 +9,10 @@ your physical installation.
 from __future__ import annotations
 
 DEFAULT_INPUTS: dict[str, str] = {
-    "temp_room1":  "rpi-net/sensor/sensor-1/temperature",
-    "light_room1": "rpi-net/sensor/sensor-2/light",
+    # sensor-1 uses TMP102+BME280 profile → publishes tmp102_temperature_c, etc.
+    "temp_room1":  "rpi-net/sensor/sensor-1/tmp102_temperature_c",
+    # sensor-2 uses BH1750 profile → publishes illuminance_lux
+    "light_room1": "rpi-net/sensor/sensor-2/illuminance_lux",
 }
 
 DEFAULT_OUTPUTS: dict[str, str] = {

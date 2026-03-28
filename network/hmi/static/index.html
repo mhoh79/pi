@@ -411,14 +411,14 @@ const TREND_MAX_PTS   = 150;              // ~5 min at 2 s interval
 
 /* Sensor definitions: { key, unit, color } */
 const SENSORS = [
-  { key: "temp_room1",  unit: "°C", color: "#58a6ff", topicSuffix: "sensor-1/temperature" },
-  { key: "light_room1", unit: "lx", color: "#3fb950", topicSuffix: "sensor-2/light"       },
+  { key: "temp_room1",  unit: "°C", color: "#58a6ff", topicSuffix: "rpi-net/sensor/sensor-1/tmp102_temperature_c" },
+  { key: "light_room1", unit: "lx", color: "#3fb950", topicSuffix: "rpi-net/sensor/sensor-2/illuminance_lux" },
 ];
 
 /* Nodes to monitor */
 const NODES = [
   { id: "gateway",   label: "Gateway",    url: "/api/gateway/status" },
-  { id: "plc",       label: "PLC",        url: "/api/plc/status"     },
+  { id: "plc",       label: "PLC",        url: "/api/plc/status"    },
   { id: "sensor-1",  label: "Sensor 1",   url: null                  },
   { id: "sensor-2",  label: "Sensor 2",   url: null                  },
 ];
@@ -466,10 +466,10 @@ function updateSensors(latest) {
   // latest is expected as { topic: {value, ts} | value }
   const now = Date.now();
   SENSORS.forEach(s => {
-    // try to find a matching entry by topic suffix
+    // try to find a matching entry by topic
     let rawVal = null, rawTs = null;
     for (const [topic, entry] of Object.entries(latest)) {
-      if (topic.endsWith(s.topicSuffix)) {
+      if (topic === s.topicSuffix || topic.endsWith(s.topicSuffix)) {
         if (typeof entry === "object" && entry !== null) {
           rawVal = entry.value ?? entry;
           rawTs  = entry.ts ?? entry.timestamp ?? null;
@@ -643,7 +643,7 @@ async function refreshNodeHealth() {
   const list = document.getElementById("node-list");
   if (!list) return;
 
-  // Check gateway & plc by pinging their /api/status
+  // Check gateway & plc by pinging their status endpoints
   for (const node of NODES) {
     if (!node.url) continue;
     try {
@@ -653,6 +653,21 @@ async function refreshNodeHealth() {
       nodeStatus[node.id] = "offline";
     }
   }
+
+  // Infer sensor node status from gateway's node tracking
+  try {
+    const nodes = await fetchJSON("/api/gateway/nodes");
+    const now = Date.now() / 1000;
+    for (const node of NODES) {
+      if (node.url) continue; // already checked above
+      const lastSeen = nodes[node.id];
+      if (lastSeen && (now - lastSeen) < 30) {
+        nodeStatus[node.id] = "online";
+      } else {
+        nodeStatus[node.id] = lastSeen ? "offline" : "unknown";
+      }
+    }
+  } catch { /* gateway unreachable – sensor status unknown */ }
 
   list.innerHTML = "";
   NODES.forEach(node => {
@@ -812,13 +827,20 @@ async function refresh() {
   try {
     dot.classList.add("blink");
 
-    // Fetch gateway latest sensors
+    // Fetch gateway latest sensors (returns {topic: message_dict, ...})
     let latest = {};
     try {
-      latest = await fetchJSON("/api/gateway/latest");
+      const raw = await fetchJSON("/api/gateway/latest");
+      // Flatten: extract payload.value from each message
+      for (const [topic, msg] of Object.entries(raw)) {
+        if (msg && typeof msg === "object" && msg.payload) {
+          latest[topic] = { value: msg.payload.value, timestamp: msg.timestamp };
+        } else {
+          latest[topic] = msg;
+        }
+      }
     } catch (e) {
       console.warn("Gateway /latest:", e.message);
-      // Mark sensor nodes offline if gateway unreachable
       nodeStatus["gateway"] = "offline";
     }
     updateSensors(latest);

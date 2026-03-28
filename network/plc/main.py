@@ -19,6 +19,8 @@ import signal
 import time
 from typing import Any
 
+from collections import deque
+
 from aiohttp import web, ClientSession, ClientTimeout, ClientError
 
 from io_table import IOTable
@@ -50,18 +52,23 @@ class PlcState:
         self.outputs: dict[str, Any] = {}
         self.cycle_count: int = 0
         self.last_cycle_ts: float = 0.0
-        self.errors: list[str] = []
+        self.errors: deque[str] = deque(maxlen=100)
         self.running: bool = False
         self.start_ts: float = time.time()
 
     def status_dict(self) -> dict:
+        # Derive alarms from outputs
+        alarms = []
+        if self.outputs.get("alarm_high_temp"):
+            alarms.append({"name": "high_temp", "ts": self.last_cycle_ts})
         return {
             "running": self.running,
             "cycle_count": self.cycle_count,
             "last_cycle_ts": self.last_cycle_ts,
             "uptime_s": round(time.time() - self.start_ts, 1),
             "scan_cycle_ms": SCAN_CYCLE_MS,
-            "errors": self.errors[-20:],  # keep last 20
+            "errors": list(self.errors)[-20:],  # last 20 for API response
+            "alarms": alarms,
         }
 
 
@@ -80,11 +87,15 @@ async def read_inputs(
         async with session.get(url, timeout=HTTP_TIMEOUT) as resp:
             if resp.status == 200:
                 data: dict = await resp.json()
-                # Gateway returns {topic: value, ...}
+                # Gateway returns {topic: {message_dict}, ...}
                 for name in io_table.list_inputs():
                     topic = io_table.get_input_topic(name)
                     if topic in data:
-                        inputs[name] = data[topic]
+                        msg_data = data[topic]
+                        # Extract the scalar value from the payload
+                        payload = msg_data.get("payload", msg_data) if isinstance(msg_data, dict) else msg_data
+                        value = payload.get("value", payload) if isinstance(payload, dict) else payload
+                        inputs[name] = value
             else:
                 msg = f"Gateway /api/latest returned HTTP {resp.status}"
                 logger.warning(msg)
@@ -114,19 +125,28 @@ async def write_outputs(
     if not payload:
         return
 
-    try:
-        url = f"{GATEWAY_URL}/api/write"
-        async with session.post(
-            url, json=payload, timeout=HTTP_TIMEOUT
-        ) as resp:
-            if resp.status not in (200, 201, 204):
-                msg = f"Gateway /api/write returned HTTP {resp.status}"
-                logger.warning(msg)
-                state.errors.append(msg)
-    except ClientError as exc:
-        msg = f"Gateway write error: {exc}"
-        logger.warning(msg)
-        state.errors.append(msg)
+    # Publish each output as a separate message via /api/ingest
+    url = f"{GATEWAY_URL}/api/ingest"
+    for topic, value in payload.items():
+        body = {
+            "topic": topic,
+            "source": os.environ.get("NODE_ID", "plc"),
+            "timestamp": time.time(),
+            "payload": {"value": value},
+            "quality": "good",
+        }
+        try:
+            async with session.post(
+                url, json=body, timeout=HTTP_TIMEOUT
+            ) as resp:
+                if resp.status not in (200, 201, 204):
+                    msg = f"Gateway /api/ingest returned HTTP {resp.status} for {topic}"
+                    logger.warning(msg)
+                    state.errors.append(msg)
+        except ClientError as exc:
+            msg = f"Gateway write error for {topic}: {exc}"
+            logger.warning(msg)
+            state.errors.append(msg)
 
 
 # ---------------------------------------------------------------------------

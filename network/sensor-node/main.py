@@ -96,7 +96,7 @@ def _build_messages(sensor: SensorSimulator, readings: Dict[str, Any]) -> list[M
         if key == "sensor":
             continue  # metadata, not a measurement
 
-        topic = f"{NODE_ID}/{key}"
+        topic = f"rpi-net/sensor/{NODE_ID}/{key}"
         msg = Message(
             topic=topic,
             source=NODE_ID,

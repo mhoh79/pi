@@ -107,6 +107,12 @@ async def handle_ingest(request: web.Request) -> web.Response:
     return web.json_response({"status": "ok", "topic": topic}, status=201)
 
 
+async def handle_all_latest(request: web.Request) -> web.Response:
+    """GET /api/latest – return latest message for every known topic."""
+    store: TimeSeriesStore = request.app["store"]
+    return web.json_response(store.all_latest())
+
+
 async def handle_latest(request: web.Request) -> web.Response:
     """GET /api/latest/{topic} – return the most recent message."""
     store: TimeSeriesStore = request.app["store"]
@@ -210,8 +216,10 @@ def register_routes(app: web.Application, store: TimeSeriesStore) -> None:
     app["started_at"] = time.time()
 
     app.router.add_get("/health", handle_health)
+    app.router.add_get("/api/status", handle_health)  # alias for HMI proxy
     app.router.add_get("/api/nodes", handle_nodes)
     app.router.add_post("/api/ingest", handle_ingest)
+    app.router.add_get("/api/latest", handle_all_latest)
     # Capture multi-segment topics like "sensor-1/temperature"
     app.router.add_get("/api/latest/{topic:.+}", handle_latest)
     app.router.add_get("/api/history/{topic:.+}", handle_history)
