@@ -25,7 +25,7 @@ set -euo pipefail
 # Defaults
 # ---------------------------------------------------------------------------
 HOST="${RPI_HOST:-}"
-USER="${RPI_USER:-pi}"
+USER_OVERRIDE="${RPI_USER:-}"
 SOURCE="."
 DEST="/home/pi/app"
 SERVICE=""
@@ -47,16 +47,21 @@ usage() {
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --host)
+      [[ $# -ge 2 ]] || { echo "ERROR: --host requires a value" >&2; exit 1; }
       HOST="$2"; shift 2 ;;
     --source)
+      [[ $# -ge 2 ]] || { echo "ERROR: --source requires a value" >&2; exit 1; }
       SOURCE="$2"; shift 2 ;;
     --dest)
+      [[ $# -ge 2 ]] || { echo "ERROR: --dest requires a value" >&2; exit 1; }
       DEST="$2"; shift 2 ;;
     --service)
+      [[ $# -ge 2 ]] || { echo "ERROR: --service requires a value" >&2; exit 1; }
       SERVICE="$2"; shift 2 ;;
     --restart)
       RESTART=true; shift ;;
     --exclude)
+      [[ $# -ge 2 ]] || { echo "ERROR: --exclude requires a value" >&2; exit 1; }
       EXCLUDE_RAW="$2"; shift 2 ;;
     --dry-run)
       DRY_RUN=true; shift ;;
@@ -102,7 +107,16 @@ done
 # Helpers
 # ---------------------------------------------------------------------------
 SSH_OPTS=(-o ConnectTimeout=5 -o BatchMode=yes)
-SSH_TARGET="${USER}@${HOST}"
+
+# RPI_HOST accepts either "host" or "user@host" format.
+# If it contains @, split into user and host; otherwise use USER_OVERRIDE or default "pi".
+if [[ "$HOST" == *@* ]]; then
+  SSH_TARGET="$HOST"
+elif [[ -n "$USER_OVERRIDE" ]]; then
+  SSH_TARGET="${USER_OVERRIDE}@${HOST}"
+else
+  SSH_TARGET="pi@${HOST}"
+fi
 
 info()  { echo "[INFO]  $*"; }
 ok()    { echo "[OK]    $*"; }

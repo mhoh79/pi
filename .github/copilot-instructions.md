@@ -67,7 +67,7 @@ This project targets Raspberry Pi hardware but develops entirely inside a devcon
   ```
 - Use **ES modules** (`"type": "module"` in `package.json`); prefer named exports over default exports.
 - Target Node.js 20 LTS.
-- Test GPIO and I2C paths with `jest` mocks; never skip tests because hardware is unavailable.
+- Provide mock/stub implementations so tests can run without hardware; never skip tests because hardware is unavailable.
 
 ---
 
@@ -95,9 +95,9 @@ This project targets Raspberry Pi hardware but develops entirely inside a devcon
   ```bash
   ssh ${RPI_HOST} "sudo systemctl restart my-app.service"
   ```
-- systemd unit files live in `deploy/systemd/`; deploy them with:
+- Deploy systemd unit files by creating a local directory and rsyncing them:
   ```bash
-  rsync -avz deploy/systemd/ ${RPI_HOST}:/etc/systemd/system/
+  rsync -avz path/to/systemd-units/ ${RPI_HOST}:/etc/systemd/system/
   ssh ${RPI_HOST} "sudo systemctl daemon-reload"
   ```
 - Never bake `$RPI_HOST` into source files; always read it from the environment at deploy time.
@@ -111,6 +111,6 @@ This project targets Raspberry Pi hardware but develops entirely inside a devcon
 | C / C++ binary correctness | Run under QEMU: `qemu-arm -L /usr/arm-linux-gnueabihf ./build-arm/my_binary` |
 | C / C++ with GDB | Start `qemu-arm -g 1234 …` in one terminal, attach `gdb-multiarch` in another (or use the VS Code launch config) |
 | Python GPIO logic | `GPIOZERO_PIN_FACTORY=mock python my_script.py` |
-| Python unit tests | `pytest` — gpiozero mock factory is activated in `conftest.py` via the env var |
+| Python unit tests | `GPIOZERO_PIN_FACTORY=mock pytest` — set the env var before running to activate the mock factory |
 | Integration / smoke tests | Use the `rpi-shell` alias to drop into an ARM container: `docker run --rm -it --platform linux/arm/v7 -v $(pwd):/workspace -w /workspace debian:bookworm-slim /bin/bash` |
 | Docker --platform validation | Always build and run test images with `--platform linux/arm/v7` or `--platform linux/arm64` to catch endianness and ABI issues early |

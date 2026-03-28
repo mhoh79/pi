@@ -153,7 +153,7 @@ class HttpTransport(Transport):
         if self._session is None:
             raise RuntimeError("Transport not connected – call connect() first")
 
-        body = {"topic": topic, **payload}
+        body = {**payload, "topic": topic}  # topic always wins over payload
         url = f"{self._base_url}/api/ingest"
         try:
             async with self._session.post(url, json=body) as resp:

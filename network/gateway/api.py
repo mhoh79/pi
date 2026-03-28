@@ -150,6 +150,8 @@ async def handle_history(request: web.Request) -> web.Response:
             n = int(request.rel_url.query.get("n", "100"))
         except ValueError as exc:
             raise web.HTTPBadRequest(reason="'n' must be an integer") from exc
+        if n <= 0:
+            raise web.HTTPBadRequest(reason="'n' must be a positive integer")
         messages = store.history(topic, n=n)
 
     return web.json_response({"topic": topic, "count": len(messages), "messages": messages})

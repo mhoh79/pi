@@ -443,10 +443,17 @@ async function fetchJSON(url) {
 /* =========================================================================
    Update helpers
    ========================================================================= */
-function fmtTs(iso) {
-  if (!iso) return "";
+function fmtTs(rawTs) {
+  if (rawTs == null || rawTs === "") return "";
   try {
-    const d = new Date(iso);
+    let d;
+    if (typeof rawTs === "number") {
+      // Unix epoch seconds; Date expects milliseconds
+      d = new Date(rawTs < 1e12 ? rawTs * 1000 : rawTs);
+    } else {
+      d = new Date(rawTs);
+    }
+    if (Number.isNaN(d.getTime())) return "";
     return d.toLocaleTimeString();
   } catch { return ""; }
 }
@@ -485,9 +492,18 @@ function updateSensors(latest) {
     if (el) {
       if (rawVal != null) {
         const num = parseFloat(rawVal);
-        el.innerHTML = isNaN(num)
-          ? `${rawVal}<span class="sensor-unit">${s.unit}</span>`
-          : `${num.toFixed(1)}<span class="sensor-unit">${s.unit}</span>`;
+        // Use textContent to avoid XSS from untrusted payloads
+        let unitSpan = el.querySelector(".sensor-unit");
+        if (!unitSpan) {
+          el.textContent = "";
+          unitSpan = document.createElement("span");
+          unitSpan.className = "sensor-unit";
+          el.appendChild(unitSpan);
+        }
+        const displayVal = isNaN(num) ? String(rawVal) : num.toFixed(1);
+        el.firstChild ? (el.firstChild.textContent = displayVal)
+          : el.insertBefore(document.createTextNode(displayVal), unitSpan);
+        unitSpan.textContent = s.unit;
       }
     }
     if (tsEl && rawTs) tsEl.textContent = fmtTs(rawTs);

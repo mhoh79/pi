@@ -73,7 +73,7 @@ If your script uses `RPi.GPIO` directly, the stubs raise `RuntimeError` on real 
 
 ### Node.js Sensor Streaming
 
-Node.js 20 is available in the container. Forward ports 3000, 5000, 8000, and 8080 are pre-configured in `devcontainer.json`, so Express or WebSocket servers are accessible from your browser tab automatically:
+Node.js 20 is available in the container. Ports 3000, 5000, 8000, and 8080 are pre-configured in `devcontainer.json`, so Express or WebSocket servers are accessible from your browser tab automatically:
 
 ```bash
 npm install
@@ -107,6 +107,7 @@ Both aliases automatically pass the correct `--platform` flag to `docker buildx 
 Set the `RPI_HOST` environment variable to your Pi's SSH target, then call `rpi-deploy`:
 
 ```bash
+# RPI_HOST accepts "user@host" or just "host" (defaults to user "pi")
 export RPI_HOST=pi@192.168.1.100
 
 # Deploy current directory to /home/pi/app on the Pi
@@ -116,9 +117,9 @@ rpi-deploy
 rpi-deploy ./build /home/pi/my-project
 ```
 
-`rpi-deploy` is a shell function that calls `rsync -avz` and automatically excludes `.git`, `build*`, `node_modules`, and `__pycache__` directories. SSH authentication uses your Codespace's forwarded SSH agent or password via `sshpass`. For key-based auth, add your private key to the Codespace secrets as `SSH_PRIVATE_KEY` and load it with `ssh-add`.
+`rpi-deploy` is a shell function that calls `rsync -avz` and automatically excludes `.git`, `build*`, `node_modules`, and `__pycache__` directories. SSH authentication uses your Codespace's forwarded SSH agent. For key-based auth, add your private key to the Codespace secrets as `SSH_PRIVATE_KEY` and load it with `ssh-add`.
 
-For scripted CI deploys, the repository also includes `deploy-to-pi.sh` as a starting point for wrapping this logic with pre/post-deploy hooks.
+For scripted CI deploys, the repository also includes `scripts/deploy-to-pi.sh` which wraps this logic with pre/post-deploy hooks and argument parsing.
 
 ---
 
@@ -223,7 +224,8 @@ The `CLAUDE.md` file at the repository root gives Claude Code the same toolchain
 ├── CLAUDE.md                      # Claude Code context and project conventions
 ├── network/
 │   └── docker-compose.yml         # Multi-node ARM container network definition
-├── deploy-to-pi.sh                # Scripted rsync deploy helper with hooks
+├── scripts/
+│   └── deploy-to-pi.sh            # Scripted rsync deploy helper with hooks
 └── README.md                      # This file
 ```
 

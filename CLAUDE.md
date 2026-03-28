@@ -185,9 +185,9 @@ rsync -avz --progress build-arm/my_app "${RPI_HOST}:/home/pi/bin/"
 # Copy Python scripts
 rsync -avz --progress scripts/ "${RPI_HOST}:/home/pi/scripts/"
 
-# Deploy systemd unit files
-rsync -avz deploy/systemd/ "${RPI_HOST}:/etc/systemd/system/"
-ssh "${RPI_HOST}" "sudo systemctl daemon-reload"
+# Deploy systemd unit files (create a local systemd/ directory as needed)
+# rsync -avz path/to/systemd-units/ "${RPI_HOST}:/etc/systemd/system/"
+# ssh "${RPI_HOST}" "sudo systemctl daemon-reload"
 
 # Restart a service
 ssh "${RPI_HOST}" "sudo systemctl restart my-app.service"

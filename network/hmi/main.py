@@ -60,7 +60,7 @@ def build_app() -> web.Application:
         app,
         defaults={
             "*": aiohttp_cors.ResourceOptions(
-                allow_credentials=True,
+                allow_credentials=False,
                 expose_headers="*",
                 allow_headers="*",
                 allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -80,7 +80,7 @@ def build_app() -> web.Application:
 
     # Static file serving – index.html served at "/"
     if STATIC_DIR.is_dir():
-        app.router.add_static("/", path=str(STATIC_DIR), name="static", show_index=True)
+        app.router.add_static("/", path=str(STATIC_DIR), name="static", show_index=False)
         logger.info("Serving static files from %s", STATIC_DIR)
     else:
         logger.warning("Static directory not found: %s", STATIC_DIR)

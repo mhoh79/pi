@@ -82,7 +82,7 @@ def _next_seq() -> int:
 # ---------------------------------------------------------------------------
 
 
-def _build_messages(sensor: SensorSimulator, readings: Dict[str, Any]) -> list[Message]:
+def _build_messages(readings: Dict[str, Any]) -> list[Message]:
     """
     Convert raw sensor readings to a list of :class:`Message` objects.
 
@@ -130,7 +130,7 @@ async def publish_loop(sensor: SensorSimulator, transport: Any) -> None:
         try:
             readings = sensor.read()
             _state["last_reading"] = readings
-            messages = _build_messages(sensor, readings)
+            messages = _build_messages(readings)
 
             for msg in messages:
                 await transport.publish(msg.topic, msg.to_dict())
