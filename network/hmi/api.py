@@ -126,7 +126,7 @@ def register_routes(app: web.Application) -> None:
 
 async def _handle_dds_plc(request: web.Request) -> web.Response:
     """GET /api/dds/plc – return cached PLC data received via DDS."""
-    # Lazy import to avoid circular dependency at module load time
-    from main import _dds_plc_cache
-
-    return web.json_response(_dds_plc_cache)
+    # The DDS PLC cache is stored on the application object by the DDS subscriber.
+    # Access it via request.app to avoid importing from the main module.
+    dds_plc_cache = request.app.get("dds_plc_cache") or {}
+    return web.json_response(dds_plc_cache)
