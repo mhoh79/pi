@@ -1,0 +1,72 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Pi: Debug ARM binary (QEMU + GDB)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build-arm/${fileBasenameNoExtension}",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb-multiarch",
+      "miDebuggerServerAddress": "localhost:1234",
+      "setupCommands": [
+        {
+          "description": "Set target architecture to ARM",
+          "text": "set architecture arm",
+          "ignoreFailures": false
+        },
+        {
+          "description": "Set sysroot for ARM libraries",
+          "text": "set sysroot /usr/arm-linux-gnueabihf",
+          "ignoreFailures": false
+        },
+        {
+          "description": "Enable pretty-printing of structures",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ],
+      "preLaunchTask": "Pi: CMake build (ARMv7)",
+      "logging": {
+        "moduleLoad": false,
+        "trace": false,
+        "engineLogging": false,
+        "programOutput": true,
+        "exceptions": true
+      },
+      "serverStarted": "Listening on",
+      "filterStdout": true,
+      "filterStderr": true,
+      "customLaunchSetupCommands": [],
+      "launchCompleteCommand": "exec-continue",
+      "presentation": {
+        "hidden": false,
+        "group": "ARM",
+        "order": 1
+      }
+    },
+    {
+      "name": "Pi: Debug Python (mock GPIO)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "env": {
+        "GPIOZERO_PIN_FACTORY": "mock"
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "justMyCode": false,
+      "presentation": {
+        "hidden": false,
+        "group": "Python",
+        "order": 1
+      }
+    }
+  ]
+}

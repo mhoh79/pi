@@ -1,0 +1,32 @@
+# Build artifacts
+build*/
+*.o
+*.elf
+*.bin
+*.hex
+
+# Node
+node_modules/
+package-lock.json
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+sensor_log.json
+
+# Sysroot cache
+/opt/rpi-sysroot/
+
+# IDE
+.vscode/.ropeproject/
+*.swp
+*.swo
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db

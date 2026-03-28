@@ -1,0 +1,112 @@
+{
+  "name": "Raspberry Pi Cross-Compilation",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "enableNonRootDocker": "true",
+      "moby": "true"
+    },
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": "true",
+      "installOhMyZsh": "true",
+      "upgradePackages": "true",
+      "username": "vscode",
+      "uid": "1000",
+      "gid": "1000"
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest",
+      "ppa": "false"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11",
+      "installTools": "true",
+      "optimize": "false"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20",
+      "nodeGypDependencies": "true"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "github.copilot",
+        "github.copilot-chat",
+        "anthropics.claude-code",
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "ms-python.python",
+        "ms-python.debugpy",
+        "ms-azuretools.vscode-docker",
+        "ms-vscode-remote.remote-containers",
+        "marus25.cortex-debug",
+        "ms-vscode.makefile-tools",
+        "streetsidesoftware.code-spell-checker"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "zsh": {
+            "path": "/bin/zsh"
+          }
+        },
+        "C_Cpp.default.compilerPath": "/usr/bin/arm-linux-gnueabihf-gcc",
+        "C_Cpp.default.intelliSenseMode": "linux-gcc-arm",
+        "C_Cpp.default.includePath": [
+          "${workspaceFolder}/**",
+          "/usr/arm-linux-gnueabihf/include/**"
+        ],
+        "cmake.configureOnOpen": true,
+        "cmake.generator": "Ninja",
+        "cmake.buildDirectory": "${workspaceFolder}/build",
+        "editor.formatOnSave": true,
+        "files.trimTrailingWhitespace": true,
+        "cSpell.enabledLanguageIds": [
+          "c",
+          "cpp",
+          "cmake",
+          "python",
+          "shellscript",
+          "markdown"
+        ]
+      }
+    }
+  },
+  "remoteEnv": {
+    "RPI_TOOLCHAIN": "/usr/bin/arm-linux-gnueabihf-",
+    "RPI_SYSROOT": "/opt/rpi-sysroot",
+    "QEMU_LD_PREFIX": "/usr/arm-linux-gnueabihf"
+  },
+  "forwardPorts": [3000, 5000, 8000, 8080],
+  "portsAttributes": {
+    "3000": {
+      "label": "HMI Dashboard",
+      "onAutoForward": "notify"
+    },
+    "5000": {
+      "label": "App Port 5000",
+      "onAutoForward": "notify"
+    },
+    "8000": {
+      "label": "App Port 8000",
+      "onAutoForward": "notify"
+    },
+    "8080": {
+      "label": "App Port 8080 (HTTP)",
+      "onAutoForward": "notify"
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/scripts/post-create.sh",
+  "remoteUser": "vscode",
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ]
+}
