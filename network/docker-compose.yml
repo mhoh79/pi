@@ -9,6 +9,8 @@ x-common: &common
   env_file: .env
   volumes:
     - ./shared:/opt/shared:ro
+  environment:
+    CYCLONEDDS_URI: /opt/shared/cyclonedds.xml
   restart: unless-stopped
   networks:
     - rpi-net
@@ -78,9 +80,6 @@ services:
         TARGETPLATFORM: ${PLATFORM:-linux/arm/v7}
     container_name: sensor-1
     hostname: sensor-1
-    depends_on:
-      gateway:
-        condition: service_healthy
     environment:
       NODE_ID: sensor-1
       SENSOR_PROFILE: TMP102+BME280+DS18B20+SHT31
@@ -94,9 +93,6 @@ services:
         TARGETPLATFORM: ${PLATFORM:-linux/arm/v7}
     container_name: sensor-2
     hostname: sensor-2
-    depends_on:
-      gateway:
-        condition: service_healthy
     environment:
       NODE_ID: sensor-2
       SENSOR_PROFILE: BH1750+MQ2
@@ -110,9 +106,6 @@ services:
         TARGETPLATFORM: ${PLATFORM:-linux/arm/v7}
     container_name: sensor-3
     hostname: sensor-3
-    depends_on:
-      gateway:
-        condition: service_healthy
     environment:
       NODE_ID: sensor-3
       SENSOR_PROFILE: MPU6050+HC-SR04+INA219
