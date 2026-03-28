@@ -31,12 +31,37 @@ echo -e "\n${BOLD}======================================================${RESET}
 echo -e "${BOLD}   Raspberry Pi Devcontainer — post-create setup${RESET}"
 echo -e "${BOLD}======================================================${RESET}"
 
+# ── 0. Wait for Docker daemon to be ready ─────────────────────────────────────
+step "Waiting for Docker daemon..."
+
+# Work around Docker client/server API version mismatch in Codespaces
+export DOCKER_API_VERSION=1.43
+
+# Fix socket permissions if needed (Docker-in-Docker may create with wrong gid)
+if [ -S /var/run/docker.sock ]; then
+    sudo chown root:docker /var/run/docker.sock 2>/dev/null || true
+fi
+
+DOCKER_TIMEOUT=30
+for i in $(seq 1 $DOCKER_TIMEOUT); do
+    if docker info &>/dev/null; then
+        ok "Docker daemon is ready (took ${i}s)."
+        break
+    fi
+    if [ "$i" -eq "$DOCKER_TIMEOUT" ]; then
+        warn "Docker daemon not ready after ${DOCKER_TIMEOUT}s — skipping Docker-dependent steps."
+        DOCKER_READY=false
+    fi
+    sleep 1
+done
+DOCKER_READY=${DOCKER_READY:-true}
+
 # ── 1. Register QEMU binfmt handlers ──────────────────────────────────────────
 step "Registering QEMU binfmt handlers (arm, aarch64)..."
-if docker run --privileged --rm tonistiigi/binfmt --install arm,aarch64 2>/dev/null; then
+if [ "$DOCKER_READY" = "true" ] && docker run --privileged --rm tonistiigi/binfmt --install arm,aarch64 2>/dev/null; then
     ok "binfmt handlers registered via tonistiigi/binfmt."
 else
-    warn "tonistiigi/binfmt failed or Docker socket not available yet."
+    warn "tonistiigi/binfmt failed or Docker not ready."
     warn "Falling back to update-binfmts (may be a no-op inside the container)."
     update-binfmts --enable qemu-arm     2>/dev/null || true
     update-binfmts --enable qemu-aarch64 2>/dev/null || true
@@ -45,7 +70,9 @@ fi
 
 # ── 2. Create Docker buildx instance ──────────────────────────────────────────
 step "Configuring Docker buildx instance 'rpi-builder'..."
-if docker buildx inspect rpi-builder &>/dev/null; then
+if [ "$DOCKER_READY" != "true" ]; then
+    warn "Docker not ready — skipping buildx configuration."
+elif docker buildx inspect rpi-builder &>/dev/null; then
     ok "rpi-builder already exists — skipping creation."
 else
     docker buildx create \
@@ -57,11 +84,13 @@ else
     ok "rpi-builder created and bootstrapped."
 fi
 # Ensure rpi-builder is the active builder for the current session.
-docker buildx use rpi-builder 2>/dev/null || true
+[ "$DOCKER_READY" = "true" ] && docker buildx use rpi-builder 2>/dev/null || true
 
 # ── 3. Pull ARM base image ─────────────────────────────────────────────────────
 step "Pulling ARM base image (debian:bookworm-slim, linux/arm/v7)..."
-if docker pull --platform linux/arm/v7 debian:bookworm-slim; then
+if [ "$DOCKER_READY" != "true" ]; then
+    warn "Docker not ready — skipping image pull."
+elif docker pull --platform linux/arm/v7 debian:bookworm-slim; then
     ok "debian:bookworm-slim (arm/v7) cached."
 else
     warn "Pull failed — image will be fetched on first use."
