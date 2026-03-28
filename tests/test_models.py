@@ -57,7 +57,8 @@ class TestSensorReading:
 
     def test_from_legacy_dict_minimal(self):
         """Handles dicts missing optional payload keys."""
-        d = {"topic": "t", "source": "s", "timestamp": 1.0, "payload": {"value": 5.0}}
+        d = {"topic": "t", "source": "s",
+             "timestamp": 1.0, "payload": {"value": 5.0}}
         sr = SensorReading.from_legacy_dict(d)
         assert sr.value == 5.0
         assert sr.raw_key == ""

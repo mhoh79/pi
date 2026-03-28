@@ -122,7 +122,8 @@ class TestLastOutputs:
 
     def test_after_execute(self):
         logic = ControlLogic()
-        logic.execute({"temp_room1": 20.0, "gas_room1": 100.0, "distance_1": 50.0})
+        logic.execute(
+            {"temp_room1": 20.0, "gas_room1": 100.0, "distance_1": 50.0})
         last = logic.last_outputs
         assert "valve_cooling" in last
         assert "alarm_gas" in last
