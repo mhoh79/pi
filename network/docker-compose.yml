@@ -9,8 +9,6 @@ x-common: &common
   env_file: .env
   volumes:
     - ./shared:/opt/shared:ro
-  environment:
-    CYCLONEDDS_URI: /opt/shared/cyclonedds.xml
   restart: unless-stopped
   networks:
     - rpi-net
