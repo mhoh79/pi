@@ -16,10 +16,12 @@ import json
 import logging
 import os
 import signal
+import sys
 import time
+from collections import deque
 from typing import Any
 
-from collections import deque
+sys.path.insert(0, "/opt/shared")
 
 from aiohttp import web, ClientSession, ClientTimeout, ClientError
 
