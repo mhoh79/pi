@@ -583,7 +583,13 @@ def create_transport(transport_type: Optional[str] = None) -> Transport:
     if transport_type == "dds":
         domain_id = int(os.environ.get("DDS_DOMAIN_ID", "0"))
         logger.info("Creating DdsTransport (domain=%d)", domain_id)
-        return DdsTransport(domain_id=domain_id)
+        try:
+            return DdsTransport(domain_id=domain_id)
+        except ImportError as exc:
+            raise ImportError(
+                "DDS transport requires additional dependencies. "
+                "Install them with: pip install cyclonedds pydantic"
+            ) from exc
 
     if transport_type == "mqtt":
         return MqttTransport()
