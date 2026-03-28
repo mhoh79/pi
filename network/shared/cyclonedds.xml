@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  CycloneDDS configuration for Docker bridge networking.
+
+  Docker bridge networks drop UDP multicast, so we disable it and rely
+  on explicit unicast peer discovery using container hostnames (resolved
+  by Docker's embedded DNS on the rpi-net network).
+
+  Mount this file into every container via the existing docker-compose
+  volume mapping (./shared:/opt/shared:ro) and set the environment
+  variable CYCLONEDDS_URI=/opt/shared/cyclonedds.xml.
+-->
+<CycloneDDS xmlns="https://cdds.io/config">
+  <Domain id="any">
+    <General>
+      <AllowMulticast>false</AllowMulticast>
+      <MaxMessageSize>65500</MaxMessageSize>
+    </General>
+    <Discovery>
+      <Peers>
+        <Peer address="gateway"/>
+        <Peer address="sensor-1"/>
+        <Peer address="sensor-2"/>
+        <Peer address="sensor-3"/>
+        <Peer address="plc"/>
+        <Peer address="hmi"/>
+      </Peers>
+      <ParticipantIndex>auto</ParticipantIndex>
+    </Discovery>
+    <Internal>
+      <SocketReceiveBufferSize min="1MB"/>
+    </Internal>
+  </Domain>
+</CycloneDDS>
