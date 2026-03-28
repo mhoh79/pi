@@ -44,7 +44,7 @@ RUN update-binfmts --enable qemu-arm    2>/dev/null || true \
 
 # Copy CMake toolchain files into a stable, well-known path inside the image.
 # They are available regardless of how or where the workspace is mounted.
-COPY toolchain/ /opt/toolchain/
+COPY .devcontainer/toolchain/ /opt/toolchain/
 
 # Create the sysroot staging directory.  It starts empty; developers can
 # populate it by running rpi-deploy or by mounting a pre-built Pi rootfs.
