@@ -14,6 +14,8 @@ transparently.  Responses are streamed back to the browser.
 from __future__ import annotations
 from aiohttp import web, ClientSession, ClientTimeout, ClientError
 
+import asyncio
+import json
 import logging
 import os
 import sys
@@ -119,6 +121,8 @@ def register_routes(app: web.Application) -> None:
     app.router.add_get("/api/dds/plc/status", _handle_dds_plc_status)
     app.router.add_get("/api/dds/plc/outputs", _handle_dds_plc_outputs)
     app.router.add_get("/api/dds/alarms", _handle_dds_alarms)
+    app.router.add_get("/api/dds/metrics", _handle_dds_metrics)
+    app.router.add_get("/api/dds/stream", _handle_dds_stream)
     app.router.add_get("/api/dds/plc", _handle_dds_plc)
 
     logger.info(
@@ -137,7 +141,8 @@ async def _handle_dds_latest(request: web.Request) -> web.Response:
     for topic, msg in raw_latest.items():
         if isinstance(msg, dict):
             payload = msg.get("payload", {})
-            value = payload.get("value") if isinstance(payload, dict) else payload
+            value = payload.get("value") if isinstance(
+                payload, dict) else payload
             flattened[topic] = {
                 "value": value,
                 "timestamp": msg.get("timestamp"),
@@ -185,6 +190,98 @@ async def _handle_dds_alarms(request: web.Request) -> web.Response:
     """GET /api/dds/alarms – active alarms from DDS cache."""
     dds_alarms = request.app.get("dds_alarms") or {}
     return web.json_response({"alarms": list(dds_alarms.values()), "source": "dds"})
+
+
+async def _handle_dds_metrics(request: web.Request) -> web.Response:
+    """GET /api/dds/metrics – runtime DDS/SSE metrics for the HMI."""
+    snapshot = request.app.get("metrics_snapshot")
+    if callable(snapshot):
+        return web.json_response(snapshot())
+    return web.json_response(request.app.get("dds_metrics") or {})
+
+
+async def _handle_dds_stream(request: web.Request) -> web.StreamResponse:
+    """GET /api/dds/stream – SSE stream of DDS-backed HMI events."""
+    response = web.StreamResponse(
+        headers={
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
+    await response.prepare(request)
+
+    queue: asyncio.Queue = asyncio.Queue(maxsize=512)
+    clients = request.app.get("sse_clients")
+    if clients is None:
+        clients = set()
+        request.app["sse_clients"] = clients
+    clients.add(queue)
+
+    metrics = request.app.get("dds_metrics")
+    if isinstance(metrics, dict):
+        metrics["clients"] = len(clients)
+
+    dds_latest = request.app.get("dds_latest") or {}
+    dds_nodes = request.app.get("dds_nodes") or {}
+    dds_outputs = request.app.get("dds_outputs") or {}
+    dds_alarms = request.app.get("dds_alarms") or {}
+    now_ts = time.time()
+    plc_last_seen = float(dds_nodes.get("plc", 0.0) or 0.0)
+
+    flattened_latest: dict[str, dict[str, object]] = {}
+    for topic, msg in dds_latest.items():
+        if isinstance(msg, dict):
+            payload = msg.get("payload", {})
+            value = payload.get("value") if isinstance(
+                payload, dict) else payload
+            flattened_latest[topic] = {
+                "value": value,
+                "timestamp": msg.get("timestamp"),
+                "source": msg.get("source"),
+            }
+
+    init_payload = {
+        "latest": flattened_latest,
+        "nodes": dict(dds_nodes),
+        "plc_status": {
+            "running": plc_last_seen > 0 and (now_ts - plc_last_seen) < 10.0,
+            "cycle_count": None,
+            "last_cycle_ts": plc_last_seen,
+            "uptime_s": round(now_ts - request.app.get("started_at", now_ts), 1),
+            "scan_cycle_ms": int(os.environ.get("PLC_SCAN_CYCLE_MS", "500")),
+            "errors": [],
+            "alarms": list(dds_alarms.values()),
+            "source": "dds",
+        },
+        "plc_outputs": {"outputs": dict(dds_outputs), "source": "dds"},
+        "alarms": {"alarms": list(dds_alarms.values()), "source": "dds"},
+        "metrics": (request.app.get("metrics_snapshot") or (lambda: request.app.get("dds_metrics") or {}))(),
+    }
+    await response.write(f"event: snapshot\ndata: {json.dumps(init_payload)}\n\n".encode())
+
+    try:
+        while True:
+            try:
+                envelope = await asyncio.wait_for(queue.get(), timeout=20.0)
+                event_type = envelope.get("type", "message")
+                data = json.dumps(envelope)
+                await response.write(
+                    f"id: {envelope.get('id', '')}\nevent: {event_type}\ndata: {data}\n\n".encode(
+                    )
+                )
+            except asyncio.TimeoutError:
+                await response.write(b": keepalive\n\n")
+    except (ConnectionResetError, asyncio.CancelledError):
+        pass
+    finally:
+        clients.discard(queue)
+        metrics = request.app.get("dds_metrics")
+        if isinstance(metrics, dict):
+            metrics["clients"] = len(clients)
+
+    return response
 
 
 async def _handle_dds_plc(request: web.Request) -> web.Response:

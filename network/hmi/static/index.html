@@ -379,7 +379,8 @@
     <h1>&#9654; RPi-Net HMI</h1>
     <div id="refresh-indicator">
       <div id="refresh-dot"></div>
-      <span id="last-updated">Connecting…</span>
+      <span id="last-updated">Stream connecting…</span>
+      <span id="stream-metrics" style="margin-left:8px">lag: — ms | clients: — | events: —</span>
     </div>
   </header>
 
@@ -515,7 +516,8 @@
     /* =========================================================================
        Configuration
        ========================================================================= */
-    const REFRESH_MS = 2000;
+    const RECONCILE_MS = 60000;
+    const STREAM_STALE_MS = 12000;
     const TREND_WINDOW_MS = 5 * 60 * 1000;   // 5 minutes
     const TREND_MAX_PTS = 150;              // ~5 min at 2 s interval
 
@@ -547,6 +549,10 @@
     SENSORS.forEach(s => { trendData[s.key] = []; });
 
     const acknowledgedAlarms = new Set();
+    let latestByTopic = {};
+    let ddsNodes = {};
+    let streamLastEventMs = 0;
+    let streamConnected = false;
 
     /* =========================================================================
        Fetch helpers
@@ -583,6 +589,24 @@
       return h > 0
         ? `${h}h ${String(m).padStart(2, "0")}m`
         : `${m}m ${String(sec).padStart(2, "0")}s`;
+    }
+
+    function setStreamIndicator(text, isOnline) {
+      const lu = document.getElementById("last-updated");
+      const dot = document.getElementById("refresh-dot");
+      if (lu) lu.textContent = text;
+      if (dot) dot.style.background = isOnline ? "var(--green)" : "var(--red)";
+    }
+
+    function updateStreamMetrics(metrics) {
+      if (!metrics || typeof metrics !== "object") return;
+      const el = document.getElementById("stream-metrics");
+      if (!el) return;
+      const lag = Number(metrics.avg_lag_ms ?? 0).toFixed(1);
+      const clients = metrics.clients ?? 0;
+      const events = metrics.events_emitted ?? 0;
+      const dds = metrics.dds_messages ?? 0;
+      el.textContent = `lag: ${lag} ms | clients: ${clients} | events: ${events} | dds: ${dds}`;
     }
 
     /* ---- Sensors ------------------------------------------------------------- */
@@ -772,24 +796,18 @@
     /* ---- Node health --------------------------------------------------------- */
     const nodeStatus = {};
 
-    async function refreshNodeHealth() {
+    function renderNodeHealth(nodes) {
       const list = document.getElementById("node-list");
       if (!list) return;
 
-      // Infer node status directly from DDS last-seen timestamps.
-      try {
-        const nodes = await fetchJSON("/api/dds/nodes");
-        const now = Date.now() / 1000;
-        for (const node of NODES) {
-          const lastSeen = nodes[node.id];
-          if (lastSeen && (now - lastSeen) < 10) {
-            nodeStatus[node.id] = "online";
-          } else {
-            nodeStatus[node.id] = lastSeen ? "offline" : "unknown";
-          }
+      const now = Date.now() / 1000;
+      for (const node of NODES) {
+        const lastSeen = nodes[node.id];
+        if (lastSeen && (now - lastSeen) < 10) {
+          nodeStatus[node.id] = "online";
+        } else {
+          nodeStatus[node.id] = lastSeen ? "offline" : "unknown";
         }
-      } catch {
-        NODES.forEach(node => { nodeStatus[node.id] = "unknown"; });
       }
 
       list.innerHTML = "";
@@ -810,6 +828,108 @@
         row.appendChild(badge);
         list.appendChild(row);
       });
+    }
+
+    async function reconcileSnapshot() {
+      try {
+        const [latest, nodes, plcStatus, plcOut, alarmData, metrics] = await Promise.all([
+          fetchJSON("/api/dds/latest"),
+          fetchJSON("/api/dds/nodes"),
+          fetchJSON("/api/dds/plc/status"),
+          fetchJSON("/api/dds/plc/outputs"),
+          fetchJSON("/api/dds/alarms"),
+          fetchJSON("/api/dds/metrics"),
+        ]);
+
+        latestByTopic = latest || {};
+        ddsNodes = nodes || {};
+
+        updateSensors(latestByTopic);
+        renderNodeHealth(ddsNodes);
+        updatePlcStatus(plcStatus || {});
+        updateOutputs(plcOut || {});
+        updateAlarms((alarmData && alarmData.alarms) || []);
+        updateStreamMetrics(metrics || {});
+        drawChart();
+      } catch (e) {
+        console.warn("Snapshot reconcile failed:", e.message);
+      }
+    }
+
+    function attachStream() {
+      const es = new EventSource("/api/dds/stream");
+
+      const handleEnvelope = (evt) => {
+        try {
+          const envelope = JSON.parse(evt.data);
+          const payload = envelope.payload || {};
+          const eventType = envelope.type || "message";
+
+          if (eventType === "sensor" && payload.topic && payload.entry) {
+            latestByTopic[payload.topic] = payload.entry;
+            updateSensors({ [payload.topic]: payload.entry });
+          } else if (eventType === "node" && payload.node_id) {
+            ddsNodes[payload.node_id] = payload.last_seen;
+            renderNodeHealth(ddsNodes);
+          } else if (eventType === "plc_output") {
+            updateOutputs({ outputs: payload.outputs || {} });
+          } else if (eventType === "alarm") {
+            updateAlarms(payload.alarms || []);
+          } else if (eventType === "plc_status") {
+            updatePlcStatus(payload || {});
+          }
+
+          if (envelope.metrics) {
+            updateStreamMetrics(envelope.metrics);
+          }
+
+          streamLastEventMs = Date.now();
+          setStreamIndicator(`Live ${new Date().toLocaleTimeString()}`, true);
+          drawChart();
+        } catch (e) {
+          console.warn("Bad stream event:", e.message);
+        }
+      };
+
+      es.addEventListener("open", () => {
+        streamConnected = true;
+        streamLastEventMs = Date.now();
+        setStreamIndicator(`Stream connected ${new Date().toLocaleTimeString()}`, true);
+      });
+
+      es.addEventListener("snapshot", (evt) => {
+        try {
+          const snap = JSON.parse(evt.data);
+          latestByTopic = snap.latest || {};
+          ddsNodes = snap.nodes || {};
+
+          updateSensors(latestByTopic);
+          renderNodeHealth(ddsNodes);
+          updatePlcStatus(snap.plc_status || {});
+          updateOutputs(snap.plc_outputs || {});
+          updateAlarms((snap.alarms && snap.alarms.alarms) || []);
+          updateStreamMetrics((snap.metrics && snap.metrics.metrics) || snap.metrics || {});
+          drawChart();
+
+          streamLastEventMs = Date.now();
+          setStreamIndicator(`Stream snapshot ${new Date().toLocaleTimeString()}`, true);
+        } catch (e) {
+          console.warn("Bad snapshot event:", e.message);
+        }
+      });
+
+      es.addEventListener("sensor", handleEnvelope);
+      es.addEventListener("node", handleEnvelope);
+      es.addEventListener("plc_output", handleEnvelope);
+      es.addEventListener("alarm", handleEnvelope);
+      es.addEventListener("plc_status", handleEnvelope);
+
+      es.onerror = () => {
+        streamConnected = false;
+        setStreamIndicator("Stream reconnecting…", false);
+      };
+
+      return es;
     }
 
     /* =========================================================================
@@ -938,76 +1058,26 @@
     }
 
     /* =========================================================================
-       Main refresh loop
+       Stream-driven update loop
        ========================================================================= */
-    let refreshTimer = null;
-    let nodeHealthTimer = null;
-
-    async function refresh() {
-      const dot = document.getElementById("refresh-dot");
-      const lu = document.getElementById("last-updated");
-
-      try {
-        dot.classList.add("blink");
-
-        // Fetch latest DDS sensor values.
-        let latest = {};
-        try {
-          latest = await fetchJSON("/api/dds/latest");
-        } catch (e) {
-          console.warn("DDS /latest:", e.message);
-        }
-        updateSensors(latest);
-
-        // Fetch PLC status from DDS cache.
-        try {
-          const plcStatus = await fetchJSON("/api/dds/plc/status");
-          updatePlcStatus(plcStatus);
-          // Alarms are also exposed on status for convenience.
-          if (plcStatus.alarms) updateAlarms(plcStatus.alarms);
-        } catch (e) {
-          console.warn("DDS PLC /status:", e.message);
-          nodeStatus["plc"] = "offline";
-        }
-
-        // Fetch PLC outputs from DDS cache.
-        try {
-          const plcOut = await fetchJSON("/api/dds/plc/outputs");
-          updateOutputs(plcOut);
-        } catch (e) {
-          console.warn("DDS PLC /outputs:", e.message);
-        }
-
-        // Fetch active alarms from DDS cache (authoritative list).
-        try {
-          const alarmData = await fetchJSON("/api/dds/alarms");
-          updateAlarms(alarmData.alarms || []);
-        } catch (e) {
-          console.warn("DDS /alarms:", e.message);
-        }
-
-        drawChart();
-
-        lu.textContent = `Updated ${new Date().toLocaleTimeString()}`;
-      } catch (e) {
-        console.error("Refresh error:", e);
-        lu.textContent = "Error — retrying…";
-      } finally {
-        setTimeout(() => dot.classList.remove("blink"), 200);
-      }
-    }
-
-    // Node health runs less frequently
-    async function refreshHealth() {
-      await refreshNodeHealth();
-    }
+    let reconcileTimer = null;
+    let staleTimer = null;
 
     (async function init() {
-      await refresh();
-      await refreshHealth();
+      await reconcileSnapshot();
+      attachStream();
 
-      refreshTimer = setInterval(refresh, REFRESH_MS);
-      nodeHealthTimer = setInterval(refreshHealth, 10_000);   // every 10 s
+      // Safety reconciliation (rare) to self-heal any missed events.
+      reconcileTimer = setInterval(reconcileSnapshot, RECONCILE_MS);
+
+      // Detect stream stalls and surface in the header.
+      staleTimer = setInterval(() => {
+        if (!streamConnected) return;
+        const age = Date.now() - streamLastEventMs;
+        if (age > STREAM_STALE_MS) {
+          setStreamIndicator(`Stream stale (${Math.round(age / 1000)}s)`, false);
+        }
+      }, 2000);
 
       // Redraw chart on window resize
       window.addEventListener("resize", drawChart);
