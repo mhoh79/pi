@@ -581,6 +581,19 @@
       } catch { return ""; }
     }
 
+    function tsToMs(rawTs) {
+      if (rawTs == null || rawTs === "") return null;
+      if (typeof rawTs === "number") return rawTs < 1e12 ? rawTs * 1000 : rawTs;
+      const parsed = Date.parse(rawTs);
+      return Number.isNaN(parsed) ? null : parsed;
+    }
+
+    function fmtLatency(ms) {
+      if (ms == null || !Number.isFinite(ms) || ms < 0) return "—";
+      if (ms < 1000) return `${Math.round(ms)} ms`;
+      return `${(ms / 1000).toFixed(1)} s`;
+    }
+
     function fmtUptime(s) {
       if (s == null) return "—";
       const h = Math.floor(s / 3600);
@@ -616,8 +629,10 @@
       SENSORS.forEach(s => {
         // try to find a matching entry by topic
         let rawVal = null, rawTs = null;
+        let matched = false;
         for (const [topic, entry] of Object.entries(latest)) {
           if (topic === s.topicSuffix || topic.endsWith(s.topicSuffix)) {
+            matched = true;
             if (typeof entry === "object" && entry !== null) {
               rawVal = entry.value ?? entry;
               rawTs = entry.ts ?? entry.timestamp ?? null;
@@ -627,6 +642,10 @@
             break;
           }
         }
+
+        // For incremental stream updates, preserve existing tile content for sensors
+        // that are not present in this update payload.
+        if (!matched) return;
 
         const el = document.getElementById(`sv-${s.key}`);
         const tsEl = document.getElementById(`st-${s.key}`);
@@ -647,7 +666,12 @@
             unitSpan.textContent = s.unit;
           }
         }
-        if (tsEl && rawTs) tsEl.textContent = fmtTs(rawTs);
+        if (tsEl) {
+          const tsMs = tsToMs(rawTs);
+          const latency = tsMs == null ? null : (now - tsMs);
+          const shownTs = fmtTs(rawTs);
+          tsEl.textContent = shownTs ? `${shownTs} • latency ${fmtLatency(latency)}` : `latency ${fmtLatency(latency)}`;
+        }
 
         // Store trend point
         if (rawVal != null) {
@@ -658,6 +682,30 @@
           while (arr.length > 0 && arr[0].ts < cutoff) arr.shift();
           if (arr.length > TREND_MAX_PTS) arr.splice(0, arr.length - TREND_MAX_PTS);
         }
+      });
+    }
+
+    function refreshSensorLatency(latest) {
+      const now = Date.now();
+      SENSORS.forEach(s => {
+        let rawTs = null;
+        for (const [topic, entry] of Object.entries(latest || {})) {
+          if (topic === s.topicSuffix || topic.endsWith(s.topicSuffix)) {
+            if (typeof entry === "object" && entry !== null) {
+              rawTs = entry.ts ?? entry.timestamp ?? null;
+            }
+            break;
+          }
+        }
+
+        if (!rawTs) return;
+
+        const tsEl = document.getElementById(`st-${s.key}`);
+        if (!tsEl) return;
+        const tsMs = tsToMs(rawTs);
+        const latency = tsMs == null ? null : (now - tsMs);
+        const shownTs = fmtTs(rawTs);
+        tsEl.textContent = shownTs ? `${shownTs} • latency ${fmtLatency(latency)}` : `latency ${fmtLatency(latency)}`;
       });
     }
 
@@ -1077,6 +1125,9 @@
         if (age > STREAM_STALE_MS) {
           setStreamIndicator(`Stream stale (${Math.round(age / 1000)}s)`, false);
         }
+
+        // Keep per-sensor latency labels fresh between data events.
+        refreshSensorLatency(latestByTopic);
       }, 2000);
 
       // Redraw chart on window resize
