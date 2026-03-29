@@ -40,7 +40,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("gateway")
 
-GATEWAY_HOST: str = os.environ.get("GATEWAY_HOST", "0.0.0.0")
+GATEWAY_HOST: str = os.environ.get("GATEWAY_BIND", "0.0.0.0")
 GATEWAY_PORT: int = int(os.environ.get("GATEWAY_PORT", "8080"))
 STORE_MAXLEN: int = int(os.environ.get("STORE_MAXLEN", "1000"))
 TRANSPORT_TYPE: str = os.environ.get("TRANSPORT", "http").lower().strip()
@@ -81,7 +81,12 @@ _dds_transport = None
 
 
 async def _start_dds_subscribers(store: TimeSeriesStore) -> None:
-    """Create a DDS transport and subscribe to all three DDS topics."""
+    """Create a DDS transport and subscribe to all three DDS topics.
+
+    Runs on the **main** aiohttp event loop so that the reader daemon
+    threads can dispatch callbacks via ``call_soon_threadsafe`` on a loop
+    that stays alive for the entire process lifetime.
+    """
     global _dds_transport
 
     from transport import create_transport
@@ -109,17 +114,26 @@ async def _start_dds_subscribers(store: TimeSeriesStore) -> None:
 async def main() -> None:
     app = build_app()
 
-    # Start DDS subscribers if transport is DDS
-    if TRANSPORT_TYPE == "dds":
-        store = app["store"]
-        await _start_dds_subscribers(store)
-
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, GATEWAY_HOST, GATEWAY_PORT)
     await site.start()
     logger.info("Gateway listening on http://%s:%d",
                 GATEWAY_HOST, GATEWAY_PORT)
+
+    # Start DDS subscribers *after* the web server is up so the health
+    # check passes and dependent services (plc, hmi) can start.
+    # Run in a background task to avoid blocking the event loop.
+    if TRANSPORT_TYPE == "dds":
+        store = app["store"]
+
+        async def _init_dds() -> None:
+            try:
+                await _start_dds_subscribers(store)
+            except Exception:
+                logger.exception("DDS initialisation failed")
+
+        asyncio.create_task(_init_dds())
 
     shutdown_event = asyncio.Event()
 

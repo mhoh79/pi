@@ -37,9 +37,9 @@ from typing import Any, Dict
 sys.path.insert(0, "/opt/shared")
 
 from aiohttp import web
-
-from sensors import create_sensor, SensorSimulator
 from messages import Message
+from sensors import create_sensor, SensorSimulator
+
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -55,6 +55,9 @@ NODE_ID: str = os.environ.get("NODE_ID", "sensor-unknown")
 SENSOR_PROFILE: str = os.environ.get("SENSOR_PROFILE", "BME280")
 INTERVAL_MS: int = int(os.environ.get("SENSOR_INTERVAL_MS", "1000"))
 HEALTH_PORT: int = int(os.environ.get("HEALTH_PORT", "9000"))
+GATEWAY_HOST: str = os.environ.get("GATEWAY_HOST", "gateway")
+GATEWAY_PORT: int = int(os.environ.get("GATEWAY_PORT", "8080"))
+TRANSPORT_TYPE: str = os.environ.get("TRANSPORT", "http").lower().strip()
 
 # ---------------------------------------------------------------------------
 # Shared state (read by health endpoint)
@@ -190,11 +193,44 @@ async def start_health_server() -> web.AppRunner:
 # ---------------------------------------------------------------------------
 
 
+async def _wait_for_gateway(timeout: float = 60.0) -> None:
+    """Block until the gateway health endpoint responds 200.
+
+    This ensures the gateway DDS participant and readers are fully
+    initialised before sensor nodes create their own participants,
+    avoiding a race condition where CycloneDDS under QEMU fails to
+    establish reliable discovery when all nodes start simultaneously.
+    """
+    import urllib.request
+    import urllib.error
+
+    url = f"http://{GATEWAY_HOST}:{GATEWAY_PORT}/health"
+    deadline = time.monotonic() + timeout
+    attempt = 0
+    while time.monotonic() < deadline:
+        attempt += 1
+        try:
+            resp = urllib.request.urlopen(url, timeout=3)
+            if resp.status == 200:
+                logger.info(
+                    "Gateway ready (attempt %d), waiting for DDS init", attempt)
+                # Gateway health responds before DDS is initialised
+                # (background task).  Give it time to create participants.
+                await asyncio.sleep(8)
+                return
+        except (urllib.error.URLError, OSError):
+            pass
+        await asyncio.sleep(2)
+    logger.warning(
+        "Gateway not reachable after %.0fs; proceeding anyway", timeout)
+
+
 async def main() -> None:
     # Delayed import so /opt/shared is on sys.path before we import transport
     from transport import create_transport
 
-    logger.info("Sensor node starting – NODE_ID=%s PROFILE=%s", NODE_ID, SENSOR_PROFILE)
+    logger.info("Sensor node starting – NODE_ID=%s PROFILE=%s",
+                NODE_ID, SENSOR_PROFILE)
 
     # Create sensor simulator
     try:
@@ -202,6 +238,10 @@ async def main() -> None:
     except ValueError as exc:
         logger.critical("Cannot create sensor: %s", exc)
         raise SystemExit(1) from exc
+
+    # Wait for gateway DDS to be ready before creating our participant
+    if TRANSPORT_TYPE == "dds":
+        await _wait_for_gateway()
 
     # Create and connect transport
     transport = create_transport()
@@ -233,7 +273,8 @@ async def main() -> None:
 
     await transport.close()
     await health_runner.cleanup()
-    logger.info("Sensor node stopped (published %d readings)", _state["readings_published"])
+    logger.info("Sensor node stopped (published %d readings)",
+                _state["readings_published"])
 
 
 if __name__ == "__main__":

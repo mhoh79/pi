@@ -289,7 +289,7 @@ class DdsTransport(Transport):
     # -- lifecycle -----------------------------------------------------------
 
     async def connect(self) -> None:
-        from cyclonedds.core import DomainParticipant
+        from cyclonedds.domain import DomainParticipant
         from cyclonedds.topic import Topic as DdsTopic
 
         from dds_types import (
@@ -346,6 +346,7 @@ class DdsTransport(Transport):
                 "DdsTransport not connected – call connect() first")
 
         from cyclonedds.pub import DataWriter
+        from cyclonedds.qos import Qos, Policy
 
         from dds_types import TOPIC_ALARM_DATA, TOPIC_CONTROL_DATA, TOPIC_SENSOR_DATA
         from models import AlarmEvent, ControlOutput, SensorReading
@@ -374,8 +375,14 @@ class DdsTransport(Transport):
             )
 
         if dds_topic_name not in self._writers:
+            writer_qos = Qos(
+                # Keep enough queued samples for bursty multi-sensor publishes.
+                Policy.History.KeepLast(512),
+                # Reliable delivery between sensor nodes and gateway/plc/hmi.
+                Policy.Reliability.Reliable(1_000_000_000),
+            )
             self._writers[dds_topic_name] = DataWriter(
-                self._participant, dds_topic)
+                self._participant, dds_topic, qos=writer_qos)
 
         writer = self._writers[dds_topic_name]
         sample = model.to_dds()
@@ -398,6 +405,7 @@ class DdsTransport(Transport):
         asyncio event loop via ``call_soon_threadsafe``.
         """
         from cyclonedds.sub import DataReader
+        from cyclonedds.qos import Qos, Policy
 
         from dds_types import TOPIC_ALARM_DATA, TOPIC_CONTROL_DATA, TOPIC_SENSOR_DATA
         from models import AlarmEvent, ControlOutput, SensorReading
@@ -408,7 +416,12 @@ class DdsTransport(Transport):
                 "Cannot subscribe: DDS topic %r not registered", topic)
             return
 
-        reader = DataReader(self._participant, dds_topic)
+        reader_qos = Qos(
+            # Avoid losing most samples when publishers emit multiple values quickly.
+            Policy.History.KeepLast(512),
+            Policy.Reliability.Reliable(1_000_000_000),
+        )
+        reader = DataReader(self._participant, dds_topic, qos=reader_qos)
         self._readers.append(reader)
 
         # Map DDS topic name → Pydantic model class for conversion
@@ -423,17 +436,34 @@ class DdsTransport(Transport):
             """Blocking loop in a daemon thread."""
             while not self._stop_event.is_set():
                 try:
-                    for sample in reader.take_iter(timeout=1.0):
-                        model = model_cls.from_dds(sample)
-                        data = model.to_dict()
-                        app_topic = data.get("topic", topic)
-                        if self._loop is not None and self._loop.is_running():
-                            self._loop.call_soon_threadsafe(
-                                callback, app_topic, data)
+                    samples = reader.take(N=100)
+                    for sample in samples:
+                        try:
+                            # CycloneDDS may return InvalidSample entries;
+                            # skip them instead of aborting the whole batch.
+                            if not hasattr(sample, "topic"):
+                                continue
+
+                            model = model_cls.from_dds(sample)
+                            data = model.to_dict()
+                            app_topic = data.get("topic", topic)
+
+                            if self._loop is not None and self._loop.is_running():
+                                self._loop.call_soon_threadsafe(
+                                    callback, app_topic, data)
+                        except Exception as exc:  # noqa: BLE001
+                            if not self._stop_event.is_set():
+                                logger.debug(
+                                    "Skipping malformed DDS sample on %s: %s",
+                                    topic,
+                                    exc,
+                                )
                 except Exception as exc:  # noqa: BLE001
                     if not self._stop_event.is_set():
                         logger.warning(
                             "DDS reader error on %s: %s", topic, exc)
+                # Poll interval when no samples are available
+                self._stop_event.wait(timeout=0.5)
 
         thread = threading.Thread(
             target=_reader_loop, daemon=True, name=f"dds-reader-{topic}",

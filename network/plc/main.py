@@ -381,12 +381,37 @@ def build_app(state: PlcState) -> web.Application:
     return app
 
 
+async def _wait_for_gateway(timeout: float = 60.0) -> None:
+    """Block until the gateway health endpoint responds 200."""
+    import urllib.request
+    import urllib.error
+
+    url = f"{GATEWAY_URL}/health"
+    deadline = time.monotonic() + timeout
+    attempt = 0
+    while time.monotonic() < deadline:
+        attempt += 1
+        try:
+            resp = urllib.request.urlopen(url, timeout=3)
+            if resp.status == 200:
+                logger.info(
+                    "Gateway ready (attempt %d), waiting for DDS init", attempt)
+                await asyncio.sleep(8)
+                return
+        except (urllib.error.URLError, OSError):
+            pass
+        await asyncio.sleep(2)
+    logger.warning(
+        "Gateway not reachable after %.0fs; proceeding anyway", timeout)
+
+
 async def main() -> None:
     state = PlcState()
     dds_transport = None
 
     # Set up DDS transport if configured
     if TRANSPORT_TYPE == "dds":
+        await _wait_for_gateway()
         try:
             from transport import create_transport
             from dds_types import TOPIC_SENSOR_DATA

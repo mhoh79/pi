@@ -1,5 +1,9 @@
 # Multi-node Raspberry Pi simulation network.
 # All services target linux/arm/v7 by default; override PLATFORM in .env.
+#
+# The shared "rpi-dds-base" image is built once (from ./base) and used as
+# the base for every service.  It contains Python 3.11, CycloneDDS (native
+# C library + Python bindings), aiohttp, and pydantic.
 
 # ---------------------------------------------------------------------------
 # Re-usable anchor for fields shared by every service
@@ -7,11 +11,12 @@
 x-common: &common
   platform: ${PLATFORM:-linux/arm/v7}
   env_file: .env
-  volumes:
-    - ./shared:/opt/shared:ro
   restart: unless-stopped
   networks:
     - rpi-net
+
+x-base-build: &base-build
+  BASE_IMAGE: rpi-dds-base
 
 networks:
   rpi-net:
@@ -50,20 +55,20 @@ services:
   gateway:
     <<: *common
     build:
-      context: ./gateway
+      context: .
+      dockerfile: gateway/Dockerfile
       args:
-        TARGETPLATFORM: ${PLATFORM:-linux/arm/v7}
+        <<: *base-build
     container_name: gateway
     hostname: gateway
     ports:
       - "8080:8080"
     volumes:
-      - ./shared:/opt/shared:ro
       - gateway-data:/var/lib/gateway
     environment:
       NODE_ID: gateway
     healthcheck:
-      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://gateway:8080/health')" ]
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')" ]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -73,9 +78,10 @@ services:
   sensor-1:
     <<: *common
     build:
-      context: ./sensor-node
+      context: .
+      dockerfile: sensor-node/Dockerfile
       args:
-        TARGETPLATFORM: ${PLATFORM:-linux/arm/v7}
+        <<: *base-build
     container_name: sensor-1
     hostname: sensor-1
     environment:
@@ -86,9 +92,10 @@ services:
   sensor-2:
     <<: *common
     build:
-      context: ./sensor-node
+      context: .
+      dockerfile: sensor-node/Dockerfile
       args:
-        TARGETPLATFORM: ${PLATFORM:-linux/arm/v7}
+        <<: *base-build
     container_name: sensor-2
     hostname: sensor-2
     environment:
@@ -99,9 +106,10 @@ services:
   sensor-3:
     <<: *common
     build:
-      context: ./sensor-node
+      context: .
+      dockerfile: sensor-node/Dockerfile
       args:
-        TARGETPLATFORM: ${PLATFORM:-linux/arm/v7}
+        <<: *base-build
     container_name: sensor-3
     hostname: sensor-3
     environment:
@@ -112,16 +120,17 @@ services:
   plc:
     <<: *common
     build:
-      context: ./plc
+      context: .
+      dockerfile: plc/Dockerfile
       args:
-        TARGETPLATFORM: ${PLATFORM:-linux/arm/v7}
+        <<: *base-build
     container_name: plc
     hostname: plc
     ports:
       - "8081:8081"
     depends_on:
       gateway:
-        condition: service_healthy
+        condition: service_started
     environment:
       NODE_ID: plc
 
@@ -129,16 +138,17 @@ services:
   hmi:
     <<: *common
     build:
-      context: ./hmi
+      context: .
+      dockerfile: hmi/Dockerfile
       args:
-        TARGETPLATFORM: ${PLATFORM:-linux/arm/v7}
+        <<: *base-build
     container_name: hmi
     hostname: hmi
     ports:
       - "3000:3000"
     depends_on:
       gateway:
-        condition: service_healthy
+        condition: service_started
       plc:
         condition: service_started
     environment:

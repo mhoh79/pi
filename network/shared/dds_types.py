@@ -7,9 +7,11 @@ CycloneDDS.  They intentionally mirror the Pydantic models in
 
 All fields carry defaults so that CycloneDDS can deserialise partial
 samples without raising.
-"""
 
-from __future__ import annotations
+NOTE: Do NOT add ``from __future__ import annotations`` here.
+CycloneDDS IDL requires concrete type objects in annotations, not
+PEP 563 lazy string references.
+"""
 
 from dataclasses import dataclass
 
@@ -30,7 +32,7 @@ TOPIC_ALARM_DATA: str = "AlarmData"
 
 
 @dataclass
-class DdsSensorReading(IdlStruct):
+class DdsSensorReading(IdlStruct, keylist=["topic"]):
     """Wire type for sensor measurements (maps to the *SensorData* topic)."""
 
     topic: str = ""
@@ -44,7 +46,7 @@ class DdsSensorReading(IdlStruct):
 
 
 @dataclass
-class DdsControlOutput(IdlStruct):
+class DdsControlOutput(IdlStruct, keylist=["topic"]):
     """Wire type for PLC outputs (maps to the *ControlData* topic)."""
 
     topic: str = ""
@@ -58,7 +60,7 @@ class DdsControlOutput(IdlStruct):
 
 
 @dataclass
-class DdsAlarmEvent(IdlStruct):
+class DdsAlarmEvent(IdlStruct, keylist=["topic"]):
     """Wire type for PLC alarm events (maps to the *AlarmData* topic)."""
 
     topic: str = ""

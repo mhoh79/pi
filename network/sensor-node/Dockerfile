@@ -1,16 +1,9 @@
-FROM --platform=${TARGETPLATFORM:-linux/arm/v7} python:3.11-slim-bookworm
+ARG BASE_IMAGE=rpi-dds-base
+FROM ${BASE_IMAGE}
 
-# Install runtime dependencies
-RUN pip install --no-cache-dir aiohttp pydantic cyclonedds
-
-# Copy application code
-COPY . /app
-
-# Note: /opt/shared is bind-mounted at runtime by docker-compose.
-# For standalone builds, mount or copy the shared/ directory manually:
-#   docker build --build-arg ... -t sensor-node .
-#   docker run -v /path/to/shared:/opt/shared:ro sensor-node
-RUN mkdir -p /opt/shared
+# Copy shared library and application code
+COPY shared/ /opt/shared/
+COPY sensor-node/ /app/
 
 WORKDIR /app
 

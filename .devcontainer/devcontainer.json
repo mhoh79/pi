@@ -79,9 +79,15 @@
   "remoteEnv": {
     "RPI_TOOLCHAIN": "/usr/bin/arm-linux-gnueabihf-",
     "RPI_SYSROOT": "/opt/rpi-sysroot",
-    "QEMU_LD_PREFIX": "/usr/arm-linux-gnueabihf"
+    "QEMU_LD_PREFIX": "/usr/arm-linux-gnueabihf",
+    "DOCKER_API_VERSION": "1.43"
   },
-  "forwardPorts": [3000, 5000, 8000, 8080],
+  "forwardPorts": [
+    3000,
+    5000,
+    8000,
+    8080
+  ],
   "portsAttributes": {
     "3000": {
       "label": "HMI Dashboard",
@@ -101,6 +107,7 @@
     }
   },
   "postCreateCommand": "bash .devcontainer/scripts/post-create.sh",
+  "postStartCommand": "bash .devcontainer/scripts/post-start.sh",
   "remoteUser": "vscode",
   "mounts": [
     "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"

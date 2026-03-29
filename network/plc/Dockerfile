@@ -1,8 +1,10 @@
-FROM --platform=${TARGETPLATFORM:-linux/arm/v7} python:3.11-slim-bookworm
+ARG BASE_IMAGE=rpi-dds-base
+FROM ${BASE_IMAGE}
 
-RUN pip install --no-cache-dir aiohttp pydantic cyclonedds
+# Copy shared library and application code
+COPY shared/ /opt/shared/
+COPY plc/ /app/
 
-COPY . /app
 WORKDIR /app
 
 EXPOSE 8081

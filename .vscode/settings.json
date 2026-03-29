@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "${workspaceFolder}/examples/c"
+    "cmake.sourceDirectory": "${workspaceFolder}/examples/c",
+    "github.copilot.chat.agentDebugLog.enabled": true
 }
