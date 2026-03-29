@@ -532,13 +532,12 @@
       { key: "power_1", unit: "mW", color: "#e3b341", topicSuffix: "rpi-net/sensor/sensor-3/ina219_power_mw" },
     ];
 
-    /* Nodes to monitor */
+    /* Nodes to monitor (DDS participants) */
     const NODES = [
-      { id: "gateway", label: "Gateway", url: "/api/gateway/status" },
-      { id: "plc", label: "PLC", url: "/api/plc/status" },
-      { id: "sensor-1", label: "Sensor 1", url: null },
-      { id: "sensor-2", label: "Sensor 2", url: null },
-      { id: "sensor-3", label: "Sensor 3", url: null },
+      { id: "plc", label: "PLC" },
+      { id: "sensor-1", label: "Sensor 1" },
+      { id: "sensor-2", label: "Sensor 2" },
+      { id: "sensor-3", label: "Sensor 3" },
     ];
 
     /* =========================================================================
@@ -777,31 +776,21 @@
       const list = document.getElementById("node-list");
       if (!list) return;
 
-      // Check gateway & plc by pinging their status endpoints
-      for (const node of NODES) {
-        if (!node.url) continue;
-        try {
-          const resp = await fetch(node.url, { signal: AbortSignal.timeout(3000) });
-          nodeStatus[node.id] = resp.ok ? "online" : "offline";
-        } catch {
-          nodeStatus[node.id] = "offline";
-        }
-      }
-
-      // Infer sensor node status from gateway's node tracking
+      // Infer node status directly from DDS last-seen timestamps.
       try {
-        const nodes = await fetchJSON("/api/gateway/nodes");
+        const nodes = await fetchJSON("/api/dds/nodes");
         const now = Date.now() / 1000;
         for (const node of NODES) {
-          if (node.url) continue; // already checked above
           const lastSeen = nodes[node.id];
-          if (lastSeen && (now - lastSeen) < 30) {
+          if (lastSeen && (now - lastSeen) < 10) {
             nodeStatus[node.id] = "online";
           } else {
             nodeStatus[node.id] = lastSeen ? "offline" : "unknown";
           }
         }
-      } catch { /* gateway unreachable – sensor status unknown */ }
+      } catch {
+        NODES.forEach(node => { nodeStatus[node.id] = "unknown"; });
+      }
 
       list.innerHTML = "";
       NODES.forEach(node => {
@@ -961,41 +950,40 @@
       try {
         dot.classList.add("blink");
 
-        // Fetch gateway latest sensors (returns {topic: message_dict, ...})
+        // Fetch latest DDS sensor values.
         let latest = {};
         try {
-          const raw = await fetchJSON("/api/gateway/latest");
-          // Flatten: extract payload.value from each message
-          for (const [topic, msg] of Object.entries(raw)) {
-            if (msg && typeof msg === "object" && msg.payload) {
-              latest[topic] = { value: msg.payload.value, timestamp: msg.timestamp };
-            } else {
-              latest[topic] = msg;
-            }
-          }
+          latest = await fetchJSON("/api/dds/latest");
         } catch (e) {
-          console.warn("Gateway /latest:", e.message);
-          nodeStatus["gateway"] = "offline";
+          console.warn("DDS /latest:", e.message);
         }
         updateSensors(latest);
 
-        // Fetch PLC status
+        // Fetch PLC status from DDS cache.
         try {
-          const plcStatus = await fetchJSON("/api/plc/status");
+          const plcStatus = await fetchJSON("/api/dds/plc/status");
           updatePlcStatus(plcStatus);
-          // Alarms may come from PLC status
+          // Alarms are also exposed on status for convenience.
           if (plcStatus.alarms) updateAlarms(plcStatus.alarms);
         } catch (e) {
-          console.warn("PLC /status:", e.message);
+          console.warn("DDS PLC /status:", e.message);
           nodeStatus["plc"] = "offline";
         }
 
-        // Fetch PLC outputs
+        // Fetch PLC outputs from DDS cache.
         try {
-          const plcOut = await fetchJSON("/api/plc/outputs");
+          const plcOut = await fetchJSON("/api/dds/plc/outputs");
           updateOutputs(plcOut);
         } catch (e) {
-          console.warn("PLC /outputs:", e.message);
+          console.warn("DDS PLC /outputs:", e.message);
+        }
+
+        // Fetch active alarms from DDS cache (authoritative list).
+        try {
+          const alarmData = await fetchJSON("/api/dds/alarms");
+          updateAlarms(alarmData.alarms || []);
+        } catch (e) {
+          console.warn("DDS /alarms:", e.message);
         }
 
         drawChart();

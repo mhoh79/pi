@@ -23,6 +23,7 @@ import logging
 import os
 import signal
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict
 
@@ -46,13 +47,7 @@ TRANSPORT_TYPE: str = os.environ.get("TRANSPORT", "http").lower().strip()
 # ---------------------------------------------------------------------------
 # DDS cache – updated by subscriber callbacks
 # ---------------------------------------------------------------------------
-_dds_plc_cache: Dict[str, Dict[str, Any]] = {}
 _dds_transport = None
-
-
-def _on_plc_data(app_topic: str, data: Dict[str, Any]) -> None:
-    """DDS callback – cache latest PLC output / alarm data by app topic."""
-    _dds_plc_cache[app_topic] = data
 
 
 # ---------------------------------------------------------------------------
@@ -60,6 +55,7 @@ def _on_plc_data(app_topic: str, data: Dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 def build_app() -> web.Application:
     app = web.Application()
+    app["started_at"] = time.time()
 
     # Shared HTTP client session (reused by proxy handlers)
     async def on_startup(application: web.Application) -> None:
@@ -114,16 +110,64 @@ async def main() -> None:
     global _dds_transport
     app = build_app()
 
+    # In-memory DDS-backed cache exposed by /api/dds/* handlers.
+    app["dds_latest"] = {}
+    app["dds_nodes"] = {}
+    app["dds_outputs"] = {}
+    app["dds_alarms"] = {}
+
+    def _on_dds_data(app_topic: str, data: Dict[str, Any]) -> None:
+        """DDS callback – update all HMI caches from incoming DDS samples."""
+        now_ts = time.time()
+        msg_ts = float(data.get("timestamp", now_ts) or now_ts)
+        source = str(data.get("source", "") or "")
+
+        latest: Dict[str, Dict[str, Any]] = app["dds_latest"]
+        latest[app_topic] = data
+
+        if source:
+            nodes: Dict[str, float] = app["dds_nodes"]
+            nodes[source] = msg_ts
+
+        payload = data.get("payload", {})
+        if not isinstance(payload, dict):
+            return
+
+        # ControlData payloads include output_id/value.
+        output_id = payload.get("output_id")
+        if output_id is not None and "value" in payload:
+            outputs: Dict[str, Any] = app["dds_outputs"]
+            outputs[str(output_id)] = payload.get("value")
+
+        # AlarmData payloads include alarm_id/active/message.
+        alarm_id = payload.get("alarm_id")
+        if alarm_id is not None:
+            alarms: Dict[str, Dict[str, Any]] = app["dds_alarms"]
+            alarm_key = str(alarm_id)
+            is_active = bool(payload.get("active", True))
+            if is_active:
+                alarms[alarm_key] = {
+                    "name": alarm_key,
+                    "ts": msg_ts,
+                    "message": payload.get("message", ""),
+                    "severity": payload.get("severity", "WARNING"),
+                }
+            else:
+                alarms.pop(alarm_key, None)
+
     # Start DDS subscribers if configured
     if TRANSPORT_TYPE == "dds":
         from transport import create_transport
-        from dds_types import TOPIC_CONTROL_DATA, TOPIC_ALARM_DATA
+        from dds_types import TOPIC_SENSOR_DATA, TOPIC_CONTROL_DATA, TOPIC_ALARM_DATA
 
         _dds_transport = create_transport("dds")
         await _dds_transport.connect()
-        await _dds_transport.subscribe(TOPIC_CONTROL_DATA, _on_plc_data)
-        await _dds_transport.subscribe(TOPIC_ALARM_DATA, _on_plc_data)
-        logger.info("HMI subscribed to DDS topics: ControlData, AlarmData")
+        await _dds_transport.subscribe(TOPIC_SENSOR_DATA, _on_dds_data)
+        await _dds_transport.subscribe(TOPIC_CONTROL_DATA, _on_dds_data)
+        await _dds_transport.subscribe(TOPIC_ALARM_DATA, _on_dds_data)
+        logger.info(
+            "HMI subscribed to DDS topics: SensorData, ControlData, AlarmData"
+        )
 
     runner = web.AppRunner(app)
     await runner.setup()

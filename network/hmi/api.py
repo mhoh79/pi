@@ -17,6 +17,7 @@ from aiohttp import web, ClientSession, ClientTimeout, ClientError
 import logging
 import os
 import sys
+import time
 from typing import Callable
 
 sys.path.insert(0, "/opt/shared")
@@ -112,7 +113,12 @@ def register_routes(app: web.Application) -> None:
     app.router.add_route("*", "/api/gateway/{tail:.*}", gateway_handler)
     app.router.add_route("*", "/api/plc/{tail:.*}", plc_handler)
 
-    # DDS-sourced PLC data endpoint (populated by main.py DDS subscriber)
+    # DDS-sourced endpoints populated by main.py subscriber callbacks.
+    app.router.add_get("/api/dds/latest", _handle_dds_latest)
+    app.router.add_get("/api/dds/nodes", _handle_dds_nodes)
+    app.router.add_get("/api/dds/plc/status", _handle_dds_plc_status)
+    app.router.add_get("/api/dds/plc/outputs", _handle_dds_plc_outputs)
+    app.router.add_get("/api/dds/alarms", _handle_dds_alarms)
     app.router.add_get("/api/dds/plc", _handle_dds_plc)
 
     logger.info(
@@ -121,12 +127,74 @@ def register_routes(app: web.Application) -> None:
     logger.info(
         "API proxy registered: /api/plc/*     → %s/api/*", PLC_BASE
     )
-    logger.info("API endpoint registered: /api/dds/plc (DDS cache)")
+    logger.info("API endpoints registered: /api/dds/* (DDS cache)")
+
+
+async def _handle_dds_latest(request: web.Request) -> web.Response:
+    """GET /api/dds/latest – flattened latest values by topic."""
+    raw_latest = request.app.get("dds_latest") or {}
+    flattened: dict[str, dict[str, object]] = {}
+    for topic, msg in raw_latest.items():
+        if isinstance(msg, dict):
+            payload = msg.get("payload", {})
+            value = payload.get("value") if isinstance(payload, dict) else payload
+            flattened[topic] = {
+                "value": value,
+                "timestamp": msg.get("timestamp"),
+                "source": msg.get("source"),
+            }
+    return web.json_response(flattened)
+
+
+async def _handle_dds_nodes(request: web.Request) -> web.Response:
+    """GET /api/dds/nodes – node last-seen timestamps derived from DDS samples."""
+    dds_nodes = request.app.get("dds_nodes") or {}
+    return web.json_response(dds_nodes)
+
+
+async def _handle_dds_plc_status(request: web.Request) -> web.Response:
+    """GET /api/dds/plc/status – PLC status inferred from DDS freshness and alarms."""
+    dds_nodes = request.app.get("dds_nodes") or {}
+    dds_alarms = request.app.get("dds_alarms") or {}
+
+    now_ts = time.time()
+    plc_last_seen = float(dds_nodes.get("plc", 0.0) or 0.0)
+    running = plc_last_seen > 0 and (now_ts - plc_last_seen) < 10.0
+
+    return web.json_response(
+        {
+            "running": running,
+            "cycle_count": None,
+            "last_cycle_ts": plc_last_seen,
+            "uptime_s": round(now_ts - request.app.get("started_at", now_ts), 1),
+            "scan_cycle_ms": int(os.environ.get("PLC_SCAN_CYCLE_MS", "500")),
+            "errors": [],
+            "alarms": list(dds_alarms.values()),
+            "source": "dds",
+        }
+    )
+
+
+async def _handle_dds_plc_outputs(request: web.Request) -> web.Response:
+    """GET /api/dds/plc/outputs – latest PLC output values from DDS cache."""
+    dds_outputs = request.app.get("dds_outputs") or {}
+    return web.json_response({"outputs": dds_outputs, "source": "dds"})
+
+
+async def _handle_dds_alarms(request: web.Request) -> web.Response:
+    """GET /api/dds/alarms – active alarms from DDS cache."""
+    dds_alarms = request.app.get("dds_alarms") or {}
+    return web.json_response({"alarms": list(dds_alarms.values()), "source": "dds"})
 
 
 async def _handle_dds_plc(request: web.Request) -> web.Response:
-    """GET /api/dds/plc – return cached PLC data received via DDS."""
-    # The DDS PLC cache is stored on the application object by the DDS subscriber.
-    # Access it via request.app to avoid importing from the main module.
-    dds_plc_cache = request.app.get("dds_plc_cache") or {}
-    return web.json_response(dds_plc_cache)
+    """GET /api/dds/plc – backward-compatible aggregate DDS PLC payload."""
+    dds_outputs = request.app.get("dds_outputs") or {}
+    dds_alarms = request.app.get("dds_alarms") or {}
+    return web.json_response(
+        {
+            "outputs": dds_outputs,
+            "alarms": list(dds_alarms.values()),
+            "source": "dds",
+        }
+    )
